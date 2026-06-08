@@ -140,7 +140,9 @@ This tool is designed for \textbf{Teaching Assistants (TAs)} and \textbf{instruc
     \item \textbf{Confidence-based review queue} — flags uncertain grades (confidence $<$ 70\%) for human review
     \item \textbf{Progress tracking} — resumes interrupted grading runs without re-processing
     \item \textbf{CSV/JSON export} — exports results in Gradescope-compatible format
-    \item \textbf{8 CLI commands} — full workflow via terminal
+    \item \textbf{Interactive TUI \& Web GUI} — Terminal UI and cross-platform web interface
+    \item \textbf{LM Studio auto-management} — Auto-detect, start, and stop local models
+    \item \textbf{10 CLI commands} — full workflow via terminal
 \end{itemize}
 
 \subsection{How It Works}
@@ -202,7 +204,7 @@ playwright install chromium
 gs-autograde --help
 \end{lstlisting}
 
-You should see a list of 8 available commands: \texttt{export}, \texttt{grade}, \texttt{list}, \texttt{login}, \texttt{models}, \texttt{parse-pdf}, \texttt{review}, \texttt{upload}.
+You should see a list of 10 available commands: \texttt{export}, \texttt{grade}, \texttt{gui}, \texttt{list}, \texttt{login}, \texttt{models}, \texttt{parse-pdf}, \texttt{review}, \texttt{tui}, \texttt{upload}.
 
 % ════════════════════════════════════════════════════════════
 \section{Configuration}
@@ -406,6 +408,43 @@ gs-autograde export --format detailed      # Per-criterion breakdown
 gs-autograde export --format json          # Full JSON
 \end{lstlisting}
 
+\subsection{\texttt{tui} --- Interactive Terminal UI}
+
+\begin{lstlisting}[language=bash]
+gs-autograde tui
+\end{lstlisting}
+
+Launches a full-screen Textual-based terminal interface. The TUI guides you through:
+
+\begin{enumerate}[itemsep=3pt]
+    \item \textbf{Course Selection} --- Browse and select from your Gradescope courses using keyboard navigation.
+    \item \textbf{Assignment Selection} --- Pick the assignment to grade from a filterable list.
+    \item \textbf{Configuration} --- Set file paths, choose AI model, enter grading instructions.
+    \item \textbf{Grading Progress} --- Watch live grading with a progress bar and log output.
+    \item \textbf{Results} --- View scores, confidence levels, and flagged items in a sortable table.
+\end{enumerate}
+
+\begin{tipbox}
+\textbf{Keyboard shortcuts:} \texttt{Tab/Shift+Tab} to navigate, \texttt{Enter} to select, \texttt{Escape} to go back, \texttt{q} to quit.
+\end{tipbox}
+
+\subsection{\texttt{gui} --- Web GUI}
+
+\begin{lstlisting}[language=bash]
+gs-autograde gui                     # Default: http://127.0.0.1:8080
+gs-autograde gui --port 3000         # Custom port
+\end{lstlisting}
+
+Opens a cross-platform web interface in your browser with a 5-step grading wizard:
+
+\begin{enumerate}[itemsep=3pt]
+    \item \textbf{Login} --- Authenticate with your Gradescope credentials.
+    \item \textbf{Select Assignment} --- Choose course and assignment from dropdown menus.
+    \item \textbf{Configure} --- Upload question/answer PDFs, rubric YAML, set extra instructions, pick model.
+    \item \textbf{Grade} --- Run grading with live progress display.
+    \item \textbf{Export} --- Download results as Gradescope-compatible CSV.
+\end{enumerate}
+
 % ════════════════════════════════════════════════════════════
 \section{LLM Providers}
 
@@ -460,6 +499,45 @@ Qwen 3.5 4B & 4B & 262K & Lightweight, resource-constrained \\
 \begin{warnbox}
 \textbf{Privacy note:} When using cloud providers (OpenCode Go, OpenAI, Anthropic), student answers are sent to external servers. Check your university's data policy. LM Studio keeps all data on your machine.
 \end{warnbox}
+
+% ════════════════════════════════════════════════════════════
+\section{LM Studio Auto-Management}
+
+The LM Studio provider includes automatic server lifecycle management. No need to manually start the LM Studio desktop app before grading.
+
+\subsection{Automatic Detection}
+
+\begin{lstlisting}[language=python]
+from gradescope_autograde.lmstudio.manager import detect_lmstudio, get_install_instructions
+
+status = detect_lmstudio()
+# Returns: {installed: bool, lms_path: str, server_running: bool, ...}
+\end{lstlisting}
+
+\subsection{Automatic Server Start}
+
+\begin{lstlisting}[language=python]
+from gradescope_autograde.lmstudio.manager import LmsManager
+
+with LmsManager() as lm:
+    lm.ensure_running()    # Starts server if not already running
+    # ... use LM Studio for grading ...
+# Server stops when exiting the context manager
+\end{lstlisting}
+
+\begin{tipbox}
+Both the TUI and GUI use \texttt{LmsManager} automatically. When you select LM Studio as your provider, the server is started for you.
+\end{tipbox}
+
+\subsection{Installation Detection}
+
+If LM Studio is not installed, the tool provides platform-specific instructions:
+
+\begin{itemize}[itemsep=2pt]
+    \item \textbf{macOS:} Download from \url{https://lmstudio.ai/} or run \texttt{curl -fsSL https://lmstudio.ai/install.sh | bash}
+    \item \textbf{Linux:} \texttt{curl -fsSL https://lmstudio.ai/install.sh | bash}
+    \item \textbf{Windows:} Download installer from \url{https://lmstudio.ai/}
+\end{itemize}
 
 % ════════════════════════════════════════════════════════════
 \section{Rubric Design}

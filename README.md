@@ -6,18 +6,30 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 
 📖 **Full User Manual**: [Download PDF](docs/manual.pdf)
 
+## Features
+
+- **AI-powered grading** — evaluate student answers against YAML rubrics using LLMs
+- **Multiple LLM backends** — OpenCode Go (cloud), LM Studio (local/private), OpenAI, Anthropic
+- **PDF question parsing** — extract questions and reference answers from instructor PDFs
+- **Confidence-based review** — flags uncertain grades for human review
+- **Interactive TUI** — terminal UI with course/assignment selection, model picker, live progress
+- **Web GUI** — cross-platform browser interface with file upload and results export
+- **LM Studio auto-management** — auto-detect, auto-start server, health checks
+- **CSV/JSON export** — Gradescope-compatible bulk upload format
+
 ## Table of Contents
 
-1. [Installation](#installation)
-2. [Quick Start](#quick-start)
-3. [Configuration](#configuration)
-4. [CLI Commands](#cli-commands)
-5. [LLM Providers](#llm-providers)
-6. [Rubric Format](#rubric-format)
-7. [PDF Question Parsing](#pdf-question-parsing)
-8. [Workflow](#workflow)
-9. [Architecture](#architecture)
-10. [FAQ](#faq)
+1. [Features](#features)
+2. [Installation](#installation)
+3. [Quick Start](#quick-start)
+4. [Configuration](#configuration)
+5. [CLI Commands](#cli-commands)
+6. [LLM Providers](#llm-providers)
+7. [Rubric Format](#rubric-format)
+8. [PDF Question Parsing](#pdf-question-parsing)
+9. [Workflow](#workflow)
+10. [Architecture](#architecture)
+11. [FAQ](#faq)
 
 ---
 
@@ -55,11 +67,13 @@ Usage: gs-autograde [OPTIONS] COMMAND [ARGS]...
 Commands:
   export     Export results to CSV/JSON
   grade      Run full grading pipeline
+  gui        Launch web GUI
   list       List Gradescope resources
   login      Authenticate with Gradescope
   models     List available AI models
   parse-pdf  Extract questions from reference PDF
   review     Interactive review of flagged grades
+  tui        Launch interactive terminal UI
   upload     Submit grades to Gradescope
 ```
 
@@ -113,6 +127,18 @@ gs-autograde parse-pdf questions.pdf -o config/rubrics/my_rubric.yaml
 
 # Or create manually (see Rubric Format section)
 vim config/rubrics/my_rubric.yaml
+```
+
+### Alternative: Interactive TUI
+
+```bash
+gs-autograde tui
+```
+
+### Alternative: Web GUI
+
+```bash
+gs-autograde gui
 ```
 
 ### Step 5: Grade (Dry Run First!)
@@ -211,6 +237,63 @@ gs-autograde models
 ```
 
 Shows a Rich table of available models from all providers. For LM Studio, queries `GET /api/v1/models` in real-time.
+
+### `tui` — Interactive Terminal UI
+
+```bash
+gs-autograde tui
+```
+
+Launches a full-screen Textual-based terminal interface with:
+- **Course selection** — browse and select from your Gradescope courses
+- **Assignment selection** — pick the assignment to grade
+- **Configuration** — choose question PDF, rubric YAML, model, and grading instructions
+- **Live grading** — watch progress with a progress bar and log output
+- **Results review** — view scores with confidence levels and flags
+
+Keyboard navigation: Tab/Shift+Tab to move, Enter to select, Escape to go back, q to quit.
+
+### `gui` — Web GUI
+
+```bash
+gs-autograde gui                    # Open at http://127.0.0.1:8080
+gs-autograde gui --port 3000        # Custom port
+```
+
+Launches a cross-platform web interface (NiceGUI) that opens in your browser. Features:
+- **5-step wizard**: Login → Select Assignment → Configure → Grade → Export
+- **File upload**: Drag & drop question PDFs and rubric YAML files
+- **Model selection**: Dropdown to pick provider and model
+- **Live progress**: Real-time grading progress with log output
+- **Results table**: View scores, export to Gradescope CSV
+
+### LM Studio Auto-Management
+
+The LM Studio provider now supports automatic server lifecycle management:
+
+```python
+from gradescope_autograde.lmstudio.manager import LmsManager
+
+with LmsManager() as lm:
+    lm.ensure_running()  # Auto-starts the server if not running
+    # ... use LM Studio for grading ...
+# Server stops automatically when done (if it was started by us)
+```
+
+The manager also provides detection and install guidance:
+
+```python
+from gradescope_autograde.lmstudio.manager import detect_lmstudio, get_install_instructions
+
+status = detect_lmstudio()
+print(f"LM Studio installed: {status['installed']}")
+print(f"Server running: {status['server_running']}")
+
+if not status['installed']:
+    print(get_install_instructions())
+```
+
+This is automatically used by the TUI and GUI — no manual server start needed.
 
 ### `parse-pdf` — Extract Questions
 
@@ -412,11 +495,15 @@ Workflow Pipeline
 │   ├── HTML Parser
 │   └── Browser Fallback (Playwright)
 │
-└── Grading Engine
-    ├── LLM Providers (OpenCodeGo, LMStudio, OpenAI, Anthropic)
-    ├── Rubric Parser (YAML)
-    ├── PDF Parser (pymupdf)
-    └── Review Queue (confidence threshold)
+├── Grading Engine
+│   ├── LLM Providers (OpenCodeGo, LMStudio, OpenAI, Anthropic)
+│   ├── Rubric Parser (YAML)
+│   ├── PDF Parser (pymupdf)
+│   └── Review Queue (confidence threshold)
+│
+├── LM Studio Manager (auto-detect, start/stop, health checks)
+├── Textual TUI (interactive terminal UI)
+└── NiceGUI Web GUI (cross-platform web interface)
 ```
 
 ---
