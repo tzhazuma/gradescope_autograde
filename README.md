@@ -2,117 +2,447 @@
 
 AI-powered automated grading assistant for Gradescope. Built for TAs who want to reduce grading workload without sacrificing quality.
 
-## Features
+**Repository**: https://github.com/tzhazuma/gradescope_autograde
 
-- **Fetch submissions** from Gradescope programmatically (HTTP scraping)
-- **AI grading** with multiple LLM backends:
-  - **OpenCode Go API** (default): deepseek-v4-flash for text, mimo-v2.5 for multimodal
-  - **LM Studio** (local): gemma4, qwen3.5 — fully private, no data leaves your machine
-  - OpenAI / Anthropic (optional)
-- **Rubric-based evaluation** with structured JSON output
-- **Human review queue** for low-confidence grades
-- **PDF parsing** for reference questions/answers
-- **Gradescope CSV export** for bulk upload
-- **Progress tracking** with resume support
+📖 **Full User Manual**: [Download PDF](docs/manual.pdf)
+
+## Table of Contents
+
+1. [Installation](#installation)
+2. [Quick Start](#quick-start)
+3. [Configuration](#configuration)
+4. [CLI Commands](#cli-commands)
+5. [LLM Providers](#llm-providers)
+6. [Rubric Format](#rubric-format)
+7. [PDF Question Parsing](#pdf-question-parsing)
+8. [Workflow](#workflow)
+9. [Architecture](#architecture)
+10. [FAQ](#faq)
+
+---
+
+## Installation
+
+### Requirements
+- Python 3.11+ (Python 3.12 recommended)
+- macOS (primary platform; Linux should also work)
+
+### Setup
+
+```bash
+git clone https://github.com/tzhazuma/gradescope_autograde.git
+cd gradescope_autograde
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -e .
+
+# Optional: browser automation fallback
+pip install -e ".[browser]"
+playwright install chromium
+```
+
+### Verify
+
+```bash
+gs-autograde --help
+```
+
+Expected output:
+
+```
+Usage: gs-autograde [OPTIONS] COMMAND [ARGS]...
+
+Commands:
+  export     Export results to CSV/JSON
+  grade      Run full grading pipeline
+  list       List Gradescope resources
+  login      Authenticate with Gradescope
+  models     List available AI models
+  parse-pdf  Extract questions from reference PDF
+  review     Interactive review of flagged grades
+  upload     Submit grades to Gradescope
+```
+
+---
 
 ## Quick Start
 
+### Step 1: Configure
+
 ```bash
-# Install
-pip install -e .
-
-# Configure
 cp config/config.example.yaml config/config.yaml
-# Edit config.yaml with your credentials
-
-# Authenticate
-gs-autograde login --email your-email@university.edu
-
-# List your courses
-gs-autograde list courses
-
-# List available AI models
-gs-autograde models
-
-# Grade an assignment
-gs-autograde grade COURSE_ID ASSIGNMENT_ID --rubric config/rubrics/my_rubric.yaml
-
-# Review flagged submissions
-gs-autograde review
-
-# Export results
-gs-autograde export --format gradescope
 ```
+
+Edit `config/config.yaml`:
+
+```yaml
+auth:
+  email: "your-email@university.edu"
+  password: "your-password"
+
+llm:
+  provider: "opencode-go"        # Use OpenCode Go API
+  model: "deepseek-v4-flash"     # Fast text grading
+```
+
+Set your API key:
+
+```bash
+export OPENCODE_GO_API_KEY="your-api-key"
+```
+
+### Step 2: Login
+
+```bash
+gs-autograde login
+```
+
+### Step 3: Explore
+
+```bash
+gs-autograde list courses
+gs-autograde list assignments 123456
+gs-autograde models          # See available AI models
+```
+
+### Step 4: Create a Rubric
+
+```bash
+# From a question/answer PDF
+gs-autograde parse-pdf questions.pdf -o config/rubrics/my_rubric.yaml
+
+# Or create manually (see Rubric Format section)
+vim config/rubrics/my_rubric.yaml
+```
+
+### Step 5: Grade (Dry Run First!)
+
+```bash
+gs-autograde grade 123456 789012 \
+  --rubric config/rubrics/my_rubric.yaml \
+  --dry-run
+```
+
+### Step 6: Review Flagged Grades
+
+```bash
+gs-autograde review
+```
+
+### Step 7: Grade for Real
+
+```bash
+gs-autograde grade 123456 789012 --rubric config/rubrics/my_rubric.yaml
+```
+
+### Step 8: Export
+
+```bash
+gs-autograde export --format gradescope   # For Gradescope bulk upload
+gs-autograde export --format detailed     # Per-criterion breakdown
+gs-autograde export --format json         # Full JSON
+```
+
+---
+
+## Configuration
+
+Full `config/config.yaml` reference:
+
+```yaml
+auth:
+  email: "your-email@university.edu"
+  password: ""
+  cookie: ""                          # Browser session cookie (alternative)
+
+gradescope:
+  base_url: "https://www.gradescope.com"
+  request_delay: 1.0                  # Seconds between requests
+  max_retries: 3
+
+llm:
+  provider: "opencode-go"             # opencode-go | lmstudio | openai | anthropic
+  model: "deepseek-v4-flash"          # Text grading (1M context)
+  multimodal_model: "mimo-v2.5"       # For image/PDF submissions
+  api_key: "${OPENCODE_GO_API_KEY}"   # Reads from environment
+  base_url: "https://opencode.ai/zen/go/v1"
+  temperature: 0.1                    # Low = consistent grading
+  max_tokens: 4096
+
+lmstudio:
+  base_url: "http://localhost:1234/v1"
+  auto_discover: true                 # Auto-detect available models
+
+workflow:
+  auto_upload: false                  # Auto-upload after grading
+  review_threshold: 0.7               # Confidence < 0.7 → flag for review
+  batch_size: 50
+
+output:
+  grades_dir: "data/output/grades/"
+  format: "gradescope_csv"
+  generate_feedback: true
+```
+
+---
+
+## CLI Commands
+
+### `login` — Authenticate
+
+```bash
+gs-autograde login                          # Interactive
+gs-autograde login --email user@univ.edu    # Email-based
+gs-autograde login --cookie "session=..."   # Cookie from browser DevTools
+```
+
+### `list` — Browse Gradescope
+
+```bash
+gs-autograde list courses
+gs-autograde list assignments <COURSE_ID>
+gs-autograde list submissions <COURSE_ID> <ASSIGNMENT_ID>
+```
+
+### `models` — AI Model Discovery
+
+```bash
+gs-autograde models
+```
+
+Shows a Rich table of available models from all providers. For LM Studio, queries `GET /api/v1/models` in real-time.
+
+### `parse-pdf` — Extract Questions
+
+```bash
+gs-autograde parse-pdf questions.pdf                    # Display extracted questions
+gs-autograde parse-pdf questions.pdf -o rubric.yaml     # Save as rubric template
+gs-autograde parse-pdf questions.pdf --separator "## Q" # Custom separator
+```
+
+### `grade` — Run Grading Pipeline
+
+```bash
+# Dry run (grade locally, don't upload)
+gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --dry-run
+
+# Full run with specific model
+gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --provider lmstudio --model gemma4-12b
+
+# Resume interrupted run (auto-detects from .grading_state.json)
+gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml
+```
+
+### `review` — Review Flagged Grades
+
+```bash
+gs-autograde review
+```
+
+Interactive: shows each flagged submission with student name, AI score, confidence, and feedback. Options: approve, reject (with notes), skip.
+
+### `upload` — Submit Grades
+
+```bash
+gs-autograde upload COURSE_ID ASSIGN_ID --results results.json
+```
+
+### `export` — Export Results
+
+```bash
+gs-autograde export --format gradescope     # Gradescope bulk upload CSV
+gs-autograde export --format detailed       # Per-criterion breakdown CSV
+gs-autograde export --format json           # Full JSON export
+```
+
+---
+
+## LLM Providers
+
+### OpenCode Go (Default, Cloud)
+
+```yaml
+llm:
+  provider: "opencode-go"
+  model: "deepseek-v4-flash"         # 284B/13B, 1M context, text-only
+  multimodal_model: "mimo-v2.5"      # 310B/15B, 1M context, text+image+video
+```
+
+### LM Studio (Local, Private)
+
+```yaml
+llm:
+  provider: "lmstudio"
+lmstudio:
+  auto_discover: true
+  base_url: "http://localhost:1234/v1"
+```
+
+1. Install [LM Studio](https://lmstudio.ai/)
+2. Download models (gemma4, qwen3.5)
+3. Start local server on port 1234
+4. Run `gs-autograde models` to verify
+
+**Recommended local models:**
+
+| Model | Size | Context | Best For |
+|-------|------|---------|----------|
+| Gemma 4 12B | 12B | 131K | Balanced grading |
+| Qwen 3.5 9B | 9B | 262K | Code/math grading |
+| Gemma 4 E4B | 4.5B | 131K | Quick checks |
+| Qwen 3.5 4B | 4B | 262K | Lightweight |
+
+> ⚠️ **Privacy**: Cloud providers receive student answers. LM Studio keeps everything on your machine.
+
+---
+
+## Rubric Format
+
+Rubrics are YAML files defining how the AI evaluates student answers.
+
+```yaml
+assignment: "Homework 1: Recursion"
+total_points: 100
+
+questions:
+  - id: "q1"
+    title: "Define recursion"
+    max_points: 10
+    type: short_answer
+    rubric:
+      - criterion: "Correct definition"
+        points: 3
+        description: "Must mention a function calling itself"
+      - criterion: "Base case mentioned"
+        points: 3
+      - criterion: "Example provided"
+        points: 2
+      - criterion: "Clarity"
+        points: 2
+
+  - id: "q2"
+    title: "Analyze time complexity"
+    max_points: 15
+    extra_instructions: "Accept both O(n log n) and O(n²) if justified"
+    rubric:
+      - criterion: "Correct big-O"
+        points: 5
+      - criterion: "Explanation"
+        points: 5
+      - criterion: "Edge cases"
+        points: 5
+
+grading_guidelines:
+  - "Award partial credit when student shows understanding"
+  - "Blank answers → 0 points, flag for review"
+  - "Off-topic answers → 0 points, flag for review"
+```
+
+### Best Practices
+
+1. **Be specific** — vague criteria produce inconsistent grades
+2. **Use checklist-style** — research shows checklist rubrics outperform holistic ones
+3. **Include point values** per criterion
+4. **Add descriptions** telling the AI what to look for
+5. **Use `extra_instructions`** for edge cases and exceptions
+6. **Always test with `--dry-run`** first
+
+---
+
+## PDF Question Parsing
+
+If you have a PDF with questions and reference answers:
+
+```
+## Question 1
+What is the time complexity of quicksort?
+
+Answer: O(n log n) average case, O(n²) worst case.
+
+## Question 2
+Explain the difference between BFS and DFS.
+
+Answer: BFS uses a queue, DFS uses a stack...
+```
+
+```bash
+gs-autograde parse-pdf exam_questions.pdf -o rubric.yaml
+```
+
+Edit the generated YAML to add rubric criteria and point values.
+
+---
+
+## Workflow
+
+```
+┌─────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Login  │ →  │  Fetch   │ →  │  Grade   │ →  │  Upload  │
+│  GS     │    │  Subms   │    │  (LLM)   │    │  Scores  │
+└─────────┘    └──────────┘    └──────────┘    └──────────┘
+                                    │
+                               ┌────┴────┐
+                               │ Review  │ (confidence < 70%)
+                               │ Queue   │
+                               └─────────┘
+```
+
+**Resume support**: If grading is interrupted, re-run the same command. The progress tracker skips already-processed submissions. Delete `.grading_state.json` to force a full regrade.
+
+**Output files**:
+```
+data/output/grades/
+├── results.json             # Full results with breakdowns
+├── gradescope_upload.csv    # For manual Gradescope upload
+├── detailed_report.csv      # Per-criterion breakdown
+└── review_queue.json        # Flagged submissions
+```
+
+---
 
 ## Architecture
 
 ```
 CLI (Click + Rich)
     │
-Workflow Pipeline (orchestrator)
+Workflow Pipeline
     │
 ├── Gradescope Client (HTTP scraping)
-│   └── Transport (session, auth, rate limiting)
+│   ├── Transport (CSRF auth, cookies, rate limiting)
+│   ├── HTML Parser
+│   └── Browser Fallback (Playwright)
 │
 └── Grading Engine
-    ├── LLM Providers (OpenCode Go, LM Studio, OpenAI, Anthropic)
+    ├── LLM Providers (OpenCodeGo, LMStudio, OpenAI, Anthropic)
     ├── Rubric Parser (YAML)
-    ├── PDF Parser (question/answer extraction)
-    └── Review Queue (low-confidence flagging)
+    ├── PDF Parser (pymupdf)
+    └── Review Queue (confidence threshold)
 ```
 
-## LLM Providers
+---
 
-### OpenCode Go (Default)
-```yaml
-llm:
-  provider: opencode-go
-  model: deepseek-v4-flash          # Text grading (1M context)
-  multimodal_model: mimo-v2.5       # For image/PDF submissions
-```
+## FAQ
 
-### LM Studio (Local)
-```yaml
-llm:
-  provider: lmstudio
-  base_url: http://localhost:1234/v1
-  auto_discover: true               # Auto-detect available models
-```
-Run `gs-autograde models` to see which local models are available.
+**Does this work with any Gradescope course?**
+Yes, as long as you have instructor or TA access.
 
-## Rubric Format
+**Is my data private?**
+Cloud providers receive student answers. LM Studio keeps everything on your machine.
 
-```yaml
-assignment: "Homework 1"
-total_points: 100
+**How accurate is AI grading?**
+LLMs match human accuracy on structured, rubric-based tasks. Always spot-check and use the review queue.
 
-questions:
-  - id: "q1"
-    title: "Explain recursion"
-    max_points: 10
-    type: short_answer
-    rubric:
-      - criterion: "Correct definition"
-        points: 3
-        description: "Mention function calling itself with base case"
-      - criterion: "Example provided"
-        points: 3
-      - criterion: "Base case importance"
-        points: 2
-      - criterion: "Writing quality"
-        points: 2
+**What if Gradescope changes their HTML?**
+The HTML parser is isolated in `client/parser.py`. The browser fallback provides an alternative path.
 
-grading_guidelines:
-  - "Award partial credit when student shows understanding"
-  - "Blank answers → 0 points"
-```
+**Can I grade multiple assignments at once?**
+Run separate terminals for different assignments. Each has its own progress state.
 
-## Requirements
+**How do I regrade?**
+Delete `.grading_state.json` and re-run. Or edit your rubric and re-grade only flagged submissions.
 
-- Python 3.11+
-- For PDF parsing: `pymupdf` (auto-installed)
-- For LM Studio: [LM Studio](https://lmstudio.ai/) running locally
+---
 
 ## License
 
-GPL-3.0
+GPL-3.0 — See [LICENSE](LICENSE)

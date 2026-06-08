@@ -1,0 +1,665 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Packages ──
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{titlesec}
+\usepackage{parskip}
+
+% ── Page Setup ──
+\geometry{margin=1in}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=cyan,
+    citecolor=blue
+}
+
+% ── Header/Footer ──
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textbf{Gradescope AutoGrade}}
+\fancyhead[R]{User Manual v0.1.0}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+
+% ── Code Style ──
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{gray!5},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{gray!30},
+    numbers=none,
+    xleftmargin=1em,
+    framexleftmargin=1em,
+}
+\lstset{style=mystyle}
+
+\lstdefinestyle{yamlstyle}{
+    backgroundcolor=\color{yellow!5},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{yellow!50!black},
+    numbers=none,
+    xleftmargin=1em,
+    framexleftmargin=1em,
+}
+
+% ── Custom Boxes ──
+\newtcolorbox{tipbox}[1][]{
+    colback=green!5,
+    colframe=green!50!black,
+    title=\textbf{Tip},
+    #1
+}
+
+\newtcolorbox{warnbox}[1][]{
+    colback=red!5,
+    colframe=red!50!black,
+    title=\textbf{Warning},
+    #1
+}
+
+\newtcolorbox{infobox}[1][]{
+    colback=blue!5,
+    colframe=blue!50!black,
+    title=\textbf{Info},
+    #1
+}
+
+% ── Section Title Format ──
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+
+\begin{document}
+
+% ── Title Page ──
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+
+{\Huge\bfseries Gradescope AutoGrade\par}
+\vspace{0.5cm}
+{\Large User Manual\par}
+\vspace{0.3cm}
+{\large Version 0.1.0\par}
+
+\vspace{2cm}
+
+{\large AI-powered automated grading assistant for TAs\par}
+
+\vspace{3cm}
+
+\begin{tabular}{rl}
+\textbf{Repository:} & \url{https://github.com/tzhazuma/gradescope_autograde} \\
+\textbf{License:} & GPL-3.0 \\
+\textbf{Platform:} & macOS (primary), Linux (compatible) \\
+\textbf{Python:} & 3.11+ (3.12 recommended) \\
+\end{tabular}
+
+\vfill
+{\large June 2026\par}
+\end{titlepage}
+
+% ── Table of Contents ──
+\tableofcontents
+\newpage
+
+% ════════════════════════════════════════════════════════════
+\section{Introduction}
+
+Gradescope AutoGrade is an AI-powered tool that automates the grading workflow on Gradescope. It fetches student submissions, evaluates them using large language models (LLMs) against configurable rubrics, and uploads scores back to Gradescope — all with minimal human intervention.
+
+\subsection{Who Is This For?}
+
+This tool is designed for \textbf{Teaching Assistants (TAs)} and \textbf{instructors} who:
+\begin{itemize}
+    \item Regularly grade large numbers of student submissions on Gradescope
+    \item Want to reduce repetitive grading work
+    \item Need consistent, rubric-based evaluation
+    \item Prefer to keep a human in the loop for uncertain cases
+\end{itemize}
+
+\subsection{Key Features}
+
+\begin{itemize}[itemsep=3pt]
+    \item \textbf{Automated submission fetching} — downloads student answers from Gradescope via HTTP scraping
+    \item \textbf{AI grading} — evaluates answers against YAML-defined rubrics using LLMs
+    \item \textbf{Multiple LLM backends} — OpenCode Go (cloud), LM Studio (local/private), OpenAI, Anthropic
+    \item \textbf{PDF question parsing} — extracts questions and reference answers from instructor PDFs
+    \item \textbf{Confidence-based review queue} — flags uncertain grades (confidence $<$ 70\%) for human review
+    \item \textbf{Progress tracking} — resumes interrupted grading runs without re-processing
+    \item \textbf{CSV/JSON export} — exports results in Gradescope-compatible format
+    \item \textbf{8 CLI commands} — full workflow via terminal
+\end{itemize}
+
+\subsection{How It Works}
+
+\begin{infobox}
+\textbf{Important:} Gradescope does \textbf{not} provide a public API. All interaction is performed by scraping the same HTML pages you see in your browser, using your instructor/TA credentials.
+\end{infobox}
+
+The tool operates in four layers:
+
+\begin{enumerate}[itemsep=3pt]
+    \item \textbf{Transport Layer} — Manages HTTP sessions, CSRF authentication, cookie persistence, and rate limiting.
+    \item \textbf{Client Layer} — Scrapes Gradescope HTML pages to list courses, assignments, and submissions, and to upload grades.
+    \item \textbf{Grading Engine} — Sends rubrics and student answers to an LLM, parses the structured JSON response.
+    \item \textbf{Workflow Orchestrator} — Coordinates the full pipeline: fetch $\rightarrow$ grade $\rightarrow$ review $\rightarrow$ export $\rightarrow$ upload.
+\end{enumerate}
+
+% ════════════════════════════════════════════════════════════
+\section{Installation}
+
+\subsection{Prerequisites}
+
+\begin{itemize}[itemsep=2pt]
+    \item \textbf{Python 3.11+} (Python 3.12 is recommended)
+    \item \textbf{macOS} (primary platform; Linux is largely compatible)
+    \item \textbf{Gradescope account} with instructor or TA access
+\end{itemize}
+
+\subsection{Setup Steps}
+
+\begin{enumerate}[itemsep=5pt]
+    \item Clone the repository:
+\begin{lstlisting}[language=bash]
+git clone https://github.com/tzhazuma/gradescope_autograde.git
+cd gradescope_autograde
+\end{lstlisting}
+
+    \item Create and activate a virtual environment:
+\begin{lstlisting}[language=bash]
+python3.12 -m venv venv
+source venv/bin/activate
+\end{lstlisting}
+
+    \item Install the package:
+\begin{lstlisting}[language=bash]
+pip install -e .
+\end{lstlisting}
+
+    \item (Optional) Install browser automation support:
+\begin{lstlisting}[language=bash]
+pip install -e ".[browser]"
+playwright install chromium
+\end{lstlisting}
+\end{enumerate}
+
+\subsection{Verify Installation}
+
+\begin{lstlisting}[language=bash]
+gs-autograde --help
+\end{lstlisting}
+
+You should see a list of 8 available commands: \texttt{export}, \texttt{grade}, \texttt{list}, \texttt{login}, \texttt{models}, \texttt{parse-pdf}, \texttt{review}, \texttt{upload}.
+
+% ════════════════════════════════════════════════════════════
+\section{Configuration}
+
+\subsection{Creating Your Config}
+
+Copy the example configuration and edit it:
+
+\begin{lstlisting}[language=bash]
+cp config/config.example.yaml config/config.yaml
+\end{lstlisting}
+
+\begin{warnbox}
+\texttt{config/config.yaml} is git-ignored. Never commit your credentials to version control.
+\end{warnbox}
+
+\subsection{Minimal Configuration}
+
+For a quick start, you only need to set your email and password:
+
+\begin{lstlisting}[style=yamlstyle]
+auth:
+  email: "your-email@university.edu"
+  password: "your-password"
+
+llm:
+  provider: "opencode-go"
+  model: "deepseek-v4-flash"
+\end{lstlisting}
+
+Set your API key:
+
+\begin{lstlisting}[language=bash]
+export OPENCODE_GO_API_KEY="your-api-key"
+\end{lstlisting}
+
+\subsection{Full Configuration Reference}
+
+\begin{lstlisting}[style=yamlstyle]
+# ── Authentication ──
+auth:
+  email: "your-email@university.edu"
+  password: ""
+  cookie: ""                          # Browser session cookie
+
+# ── Gradescope Settings ──
+gradescope:
+  base_url: "https://www.gradescope.com"
+  request_delay: 1.0                  # Seconds between requests
+  max_retries: 3
+
+# ── LLM Grading Engine ──
+llm:
+  provider: "opencode-go"             # opencode-go|lmstudio|openai|anthropic
+  model: "deepseek-v4-flash"
+  multimodal_model: "mimo-v2.5"
+  api_key: "${OPENCODE_GO_API_KEY}"
+  base_url: "https://opencode.ai/zen/go/v1"
+  temperature: 0.1
+  max_tokens: 4096
+
+# ── LM Studio (Local) ──
+lmstudio:
+  base_url: "http://localhost:1234/v1"
+  auto_discover: true
+  default_model: ""
+
+# ── Workflow ──
+workflow:
+  auto_upload: false
+  review_threshold: 0.7               # Confidence < 0.7 → review
+  batch_size: 50
+
+# ── Output ──
+output:
+  grades_dir: "data/output/grades/"
+  format: "gradescope_csv"
+  generate_feedback: true
+\end{lstlisting}
+
+% ════════════════════════════════════════════════════════════
+\section{CLI Commands}
+
+\subsection{\texttt{login} — Authenticate}
+
+\begin{lstlisting}[language=bash]
+# Interactive login (prompts for credentials)
+gs-autograde login
+
+# Email-based login
+gs-autograde login --email user@university.edu
+
+# Cookie-based (from browser DevTools → Application → Cookies)
+gs-autograde login --cookie "_gradescope_session=abc123..."
+\end{lstlisting}
+
+Successful login saves cookies to \texttt{.cookies/session.txt}.
+
+\subsection{\texttt{list} — Browse Resources}
+
+\begin{lstlisting}[language=bash]
+gs-autograde list courses
+gs-autograde list assignments <COURSE_ID>
+gs-autograde list submissions <COURSE_ID> <ASSIGNMENT_ID>
+\end{lstlisting}
+
+Outputs results as formatted Rich tables.
+
+\subsection{\texttt{models} — Discover AI Models}
+
+\begin{lstlisting}[language=bash]
+gs-autograde models
+\end{lstlisting}
+
+Displays a table of available models from all configured providers:
+
+\begin{center}
+\begin{tabular}{llrlr}
+\toprule
+\textbf{Provider} & \textbf{Model} & \textbf{Context} & \textbf{Multimodal} & \textbf{Loaded} \\
+\midrule
+opencode-go & DeepSeek V4 Flash & 1,000,000 & No & $\checkmark$ \\
+opencode-go & MiMo V2.5 & 1,000,000 & Yes & $\checkmark$ \\
+lmstudio & Gemma 4 12B & 131,072 & Yes & $\checkmark$ \\
+lmstudio & Qwen 3.5 9B & 262,144 & No & $\checkmark$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For LM Studio, models are queried in real-time via \texttt{GET /api/v1/models}. Only downloaded models are shown, with a checkmark indicating whether they are loaded in memory.
+
+\subsection{\texttt{parse-pdf} — Extract Questions}
+
+\begin{lstlisting}[language=bash]
+# Display extracted questions
+gs-autograde parse-pdf exam_questions.pdf
+
+# Save as rubric template
+gs-autograde parse-pdf exam_questions.pdf -o rubric.yaml
+
+# Custom question separator
+gs-autograde parse-pdf exam_questions.pdf --separator "### Problem"
+\end{lstlisting}
+
+\begin{infobox}
+The PDF should separate questions with a consistent marker like \texttt{\#\# Question}. The answer section begins after a blank line or an \texttt{Answer:} prefix. Edit the generated YAML to add per-question rubric criteria and point values.
+\end{infobox}
+
+\subsection{\texttt{grade} — Run Grading Pipeline}
+
+This is the core command. It fetches submissions, grades them, and optionally uploads scores.
+
+\begin{lstlisting}[language=bash]
+# Dry run: grade locally, do NOT upload
+gs-autograde grade 123456 789012 \
+  --rubric rubric.yaml \
+  --dry-run
+
+# Full run with OpenCode Go
+gs-autograde grade 123456 789012 \
+  --rubric rubric.yaml \
+  --provider opencode-go \
+  --model deepseek-v4-flash
+
+# Full run with local LM Studio model
+gs-autograde grade 123456 789012 \
+  --rubric rubric.yaml \
+  --provider lmstudio \
+  --model gemma4-12b
+\end{lstlisting}
+
+\begin{tipbox}
+\textbf{Always start with \texttt{--dry-run}} to verify your rubric produces reasonable grades before uploading anything to Gradescope.
+\end{tipbox}
+
+\subsection{\texttt{review} — Review Flagged Grades}
+
+\begin{lstlisting}[language=bash]
+gs-autograde review
+\end{lstlisting}
+
+Presents each flagged submission interactively:
+\begin{itemize}
+    \item Student name and question
+    \item AI-assigned score with confidence level
+    \item AI-generated feedback
+    \item Options: \texttt{[a]pprove}, \texttt{[r]eject} (with notes), \texttt{[s]kip}
+\end{itemize}
+
+\subsection{\texttt{upload} — Submit Grades}
+
+\begin{lstlisting}[language=bash]
+gs-autograde upload 123456 789012 --results results.json
+\end{lstlisting}
+
+\subsection{\texttt{export} — Export Results}
+
+\begin{lstlisting}[language=bash]
+gs-autograde export --format gradescope    # Gradescope bulk upload CSV
+gs-autograde export --format detailed      # Per-criterion breakdown
+gs-autograde export --format json          # Full JSON
+\end{lstlisting}
+
+% ════════════════════════════════════════════════════════════
+\section{LLM Providers}
+
+\subsection{OpenCode Go (Default, Cloud)}
+
+\begin{lstlisting}[style=yamlstyle]
+llm:
+  provider: "opencode-go"
+  model: "deepseek-v4-flash"          # 1M context, fast, text-only
+  multimodal_model: "mimo-v2.5"       # 1M context, text+image+video+audio
+\end{lstlisting}
+
+\begin{itemize}[itemsep=2pt]
+    \item \textbf{deepseek-v4-flash}: 284B total params (13B active), 1M token context, 384K max output. Best for text-only grading.
+    \item \textbf{mimo-v2.5}: 310B total params (15B active), 1M token context, 128K max output. Use when student submissions include images, diagrams, or handwriting.
+\end{itemize}
+
+Set the environment variable: \texttt{export OPENCODE\_GO\_API\_KEY="your-key"}
+
+\subsection{LM Studio (Local, Private)}
+
+\begin{lstlisting}[style=yamlstyle]
+llm:
+  provider: "lmstudio"
+lmstudio:
+  auto_discover: true
+  base_url: "http://localhost:1234/v1"
+\end{lstlisting}
+
+\begin{enumerate}[itemsep=3pt]
+    \item Install \href{https://lmstudio.ai/}{LM Studio}
+    \item Download models via LM Studio's UI
+    \item Start the local server (Developer $\rightarrow$ Local Server $\rightarrow$ Start)
+    \item Run \texttt{gs-autograde models} to see available models
+\end{enumerate}
+
+\textbf{Recommended models for grading:}
+
+\begin{center}
+\begin{tabular}{lccp{4cm}}
+\toprule
+\textbf{Model} & \textbf{Size} & \textbf{Context} & \textbf{Best For} \\
+\midrule
+Gemma 4 12B & 12B & 131K & Balanced, general grading \\
+Qwen 3.5 9B & 9B & 262K & Code/math grading \\
+Gemma 4 E4B & 4.5B & 131K & Quick checks, fast iteration \\
+Qwen 3.5 4B & 4B & 262K & Lightweight, resource-constrained \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{warnbox}
+\textbf{Privacy note:} When using cloud providers (OpenCode Go, OpenAI, Anthropic), student answers are sent to external servers. Check your university's data policy. LM Studio keeps all data on your machine.
+\end{warnbox}
+
+% ════════════════════════════════════════════════════════════
+\section{Rubric Design}
+
+Rubrics are the most critical component of the grading pipeline. The AI's accuracy depends almost entirely on how well your rubric is structured.
+
+\subsection{Rubric Format (YAML)}
+
+\begin{lstlisting}[style=yamlstyle]
+assignment: "Homework 1: Recursion"
+total_points: 100
+
+questions:
+  - id: "q1"
+    title: "Define recursion"
+    max_points: 10
+    type: short_answer
+    rubric:
+      - criterion: "Correct definition"
+        points: 3
+        description: "Must mention function calling itself"
+      - criterion: "Base case mentioned"
+        points: 3
+        description: "Must mention stopping condition"
+      - criterion: "Example provided"
+        points: 2
+      - criterion: "Clarity and terminology"
+        points: 2
+
+grading_guidelines:
+  - "Award partial credit when student shows understanding"
+  - "Blank → 0 points, flag for review"
+  - "Off-topic → 0 points, flag for review"
+\end{lstlisting}
+
+\subsection{Best Practices}
+
+\begin{enumerate}[itemsep=5pt]
+    \item \textbf{Be specific.} ``Correct answer'' is vague. ``Must include both average O(n log n) and worst-case O(n\textsuperscript{2})'' is specific.
+
+    \item \textbf{Use checklist-style criteria.} Research shows checklist rubrics produce more consistent AI grades than holistic rubrics.
+
+    \item \textbf{Include point values per criterion.} The AI needs to know how to weight each aspect.
+
+    \item \textbf{Add descriptions.} The \texttt{description} field tells the AI \textit{what to look for} in the student's answer.
+
+    \item \textbf{Use \texttt{extra\_instructions}.} For edge cases or exceptions:
+\begin{lstlisting}[style=yamlstyle]
+extra_instructions: >
+  Accept either O(n log n) or O(n^2) if properly justified.
+  Deduct 1 point for missing base case explanation.
+\end{lstlisting}
+
+    \item \textbf{Start with a dry run.} Always test your rubric on a few submissions with \texttt{--dry-run} before running on the full class.
+\end{enumerate}
+
+% ════════════════════════════════════════════════════════════
+\section{Workflow}
+
+\subsection{Typical Grading Session}
+
+\begin{enumerate}[itemsep=5pt]
+    \item \textbf{Prepare:} Create or parse your rubric YAML.
+    \item \textbf{Login:} \texttt{gs-autograde login}
+    \item \textbf{Dry run:} \texttt{gs-autograde grade ... --dry-run}
+    \item \textbf{Review rubric:} Check the dry-run results. Adjust rubric if needed.
+    \item \textbf{Grade:} \texttt{gs-autograde grade ... --rubric rubric.yaml}
+    \item \textbf{Review:} \texttt{gs-autograde review} — approve/reject flagged items.
+    \item \textbf{Export:} \texttt{gs-autograde export --format gradescope}
+    \item \textbf{Upload:} Either use \texttt{gs-autograde upload} or manually upload the CSV.
+\end{enumerate}
+
+\subsection{Resume After Interruption}
+
+If grading is interrupted (network loss, crash, Ctrl+C), simply re-run the same \texttt{grade} command. The progress tracker (\texttt{.grading\_state.json}) remembers which submissions were already processed.
+
+To force a full re-grade, delete the state file:
+
+\begin{lstlisting}[language=bash]
+rm .grading_state.json
+\end{lstlisting}
+
+\subsection{Output Structure}
+
+\begin{lstlisting}[language=bash]
+data/output/grades/
+├── results.json             # Full results with breakdowns
+├── gradescope_upload.csv    # For manual Gradescope upload
+├── detailed_report.csv      # Per-criterion breakdown
+└── review_queue.json        # Flagged submissions
+\end{lstlisting}
+
+% ════════════════════════════════════════════════════════════
+\section{Architecture}
+
+\begin{verbatim}
+CLI (Click + Rich)
+    │
+Workflow Pipeline (orchestrator)
+    │
+├── Gradescope Client (HTTP scraping)
+│   ├── Transport (CSRF auth, cookies, rate limiting)
+│   ├── HTML Parser (course/assignment/submission extraction)
+│   └── Browser Fallback (Playwright cookie extraction)
+│
+└── Grading Engine
+    ├── LLM Providers
+    │   ├── OpenCodeGoProvider (deepseek-v4-flash, mimo-v2.5)
+    │   ├── LMStudioProvider (local gemma4, qwen3.5)
+    │   ├── OpenAIProvider (optional)
+    │   └── AnthropicProvider (optional)
+    ├── Rubric Parser (YAML)
+    ├── PDF Parser (pymupdf)
+    └── Review Queue (confidence threshold)
+\end{verbatim}
+
+\subsection{Design Decisions}
+
+\begin{itemize}[itemsep=3pt]
+    \item \textbf{No official API.} Gradescope does not provide a public API. All interaction uses HTTP scraping of HTML pages.
+    \item \textbf{CSRF authentication.} The login flow scrapes Rails CSRF tokens from the login page.
+    \item \textbf{Dict-based interfaces.} Internal modules communicate via plain Python dicts, not strongly-typed models, for loose coupling.
+    \item \textbf{LM Studio auto-discovery.} The LM Studio provider queries \texttt{GET /api/v1/models} in real-time to show available local models.
+    \item \textbf{Confidence-based review.} Grades with confidence below the configured threshold (default 0.7) are automatically flagged for human review.
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════
+\section{Troubleshooting}
+
+\subsection{Login fails}
+
+\begin{itemize}[itemsep=3pt]
+    \item Check your email/password in \texttt{config/config.yaml}
+    \item Try the cookie-based login: extract \texttt{\_gradescope\_session} from your browser's DevTools $\rightarrow$ Application $\rightarrow$ Cookies
+    \item Run \texttt{gs-autograde login --cookie "..."}
+\end{itemize}
+
+\subsection{Model not found}
+
+\begin{itemize}[itemsep=3pt]
+    \item Run \texttt{gs-autograde models} to see available models
+    \item For LM Studio: ensure the server is running on port 1234
+    \item For OpenCode Go: verify \texttt{OPENCODE\_GO\_API\_KEY} is set
+\end{itemize}
+
+\subsection{PIP install fails on macOS}
+
+\begin{itemize}[itemsep=3pt]
+    \item Ensure you're using Python 3.11+ (Python 3.14 on Homebrew may have issues)
+    \item Try: \texttt{python3.12 -m venv venv \&\& source venv/bin/activate \&\& pip install -e .}
+\end{itemize}
+
+\subsection{Grading produces unexpected results}
+
+\begin{itemize}[itemsep=3pt]
+    \item Check your rubric — are the criteria specific enough?
+    \item Run with \texttt{--dry-run} and review the AI's feedback
+    \item Lower \texttt{review\_threshold} in config to catch more items for human review
+    \item Try a different model (e.g., switch from deepseek-v4-flash to a larger local model)
+\end{itemize}
+
+\subsection{Gradescope blocks requests}
+
+\begin{itemize}[itemsep=3pt]
+    \item Increase \texttt{request\_delay} in config (try 2.0 or 3.0 seconds)
+    \item Reduce \texttt{batch\_size} to process fewer submissions per run
+    \item Use the browser fallback: install with \texttt{pip install -e ".[browser]"}
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════
+\section{FAQ}
+
+\subsection*{Does this work with any Gradescope course?}
+Yes, as long as you have instructor or TA access.
+
+\subsection*{Is my data private?}
+Cloud providers (OpenCode Go, OpenAI) receive student answers. LM Studio keeps everything on your machine.
+
+\subsection*{How accurate is AI grading?}
+Research shows LLMs match human accuracy on structured, rubric-based tasks. Always spot-check and use the review queue.
+
+\subsection*{Can I grade multiple assignments at once?}
+Run separate terminal sessions for different assignments. Each maintains its own progress state.
+
+\subsection*{What if I need to regrade?}
+Delete \texttt{.grading\_state.json} and re-run. Or edit your rubric and re-grade only flagged submissions.
+
+% ════════════════════════════════════════════════════════════
+\section{License}
+
+Gradescope AutoGrade is licensed under the GNU General Public License v3.0 (GPL-3.0).
+
+\vspace{1cm}
+\begin{center}
+\rule{0.5\textwidth}{0.5pt}
+
+\vspace{0.5cm}
+\textbf{Repository:} \url{https://github.com/tzhazuma/gradescope_autograde}
+
+\textbf{Issues:} \url{https://github.com/tzhazuma/gradescope_autograde/issues}
+\end{center}
+
+\end{document}

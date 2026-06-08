@@ -29,6 +29,13 @@ data/output/
 data/grades/
 *.har
 
+# LaTeX
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+
 # Secrets
 .env.local
 .env.production
