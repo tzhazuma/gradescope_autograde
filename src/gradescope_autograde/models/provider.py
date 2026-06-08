@@ -8,6 +8,8 @@ class ProviderType(str, Enum):
     ANTHROPIC = "anthropic"
 
 class LLMModel(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
     provider: ProviderType
     model_id: str
     display_name: str
