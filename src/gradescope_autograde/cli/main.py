@@ -1,0 +1,467 @@
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+import click
+import yaml
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
+
+from gradescope_autograde.config import load_config
+
+console = Console()
+error_console = Console(stderr=True)
+
+
+def _error(message: str) -> None:
+    error_console.print(f"[bold red]Error:[/bold red] {message}")
+    sys.exit(1)
+
+
+def _success(message: str) -> None:
+    console.print(f"[bold green]Success:[/bold green] {message}")
+
+
+def _create_session(config_path: str):
+    from gradescope_autograde.transport.session import GSSession
+
+    cfg = load_config(config_path)
+    session = GSSession(
+        base_url=cfg.gradescope.base_url,
+        request_delay=cfg.gradescope.request_delay,
+        max_retries=cfg.gradescope.max_retries,
+    )
+
+    cookie_path = Path(".cookies/session.txt")
+    if cookie_path.exists():
+        session.load_cookies(cookie_path)
+    elif cfg.auth.cookie:
+        session.login_with_cookie(cfg.auth.cookie)
+    elif cfg.auth.email and cfg.auth.password:
+        if not session.login(cfg.auth.email, cfg.auth.password):
+            _error("Login failed. Check credentials.")
+    else:
+        _error("No credentials found. Run `gs-autograde login` first.")
+
+    return session, cfg
+
+
+@click.group()
+@click.option("--config", "-c", default="config/config.yaml", help="Path to config file")
+@click.pass_context
+def cli(ctx: click.Context, config: str) -> None:
+    ctx.ensure_object(dict)
+    ctx.obj["config_path"] = config
+
+
+@cli.command()
+@click.option("--email", "-e", default=None, help="Gradescope email")
+@click.option("--password", "-p", default=None, help="Gradescope password")
+@click.option("--cookie", default=None, help="Raw cookie string (e.g. 'session=abc123')")
+@click.pass_context
+def login(ctx: click.Context, email: str | None, password: str | None, cookie: str | None) -> None:
+    from gradescope_autograde.transport.session import GSSession
+
+    if not cookie and (not email or not password):
+        _error("Provide either --email/--password or --cookie.")
+
+    session = GSSession()
+    try:
+        if cookie:
+            session.login_with_cookie(cookie)
+        else:
+            if not session.login(email, password):
+                _error("Login failed. Check email/password.")
+    except Exception as exc:
+        _error(f"Login failed: {exc}")
+
+    cookie_path = Path(".cookies/session.txt")
+    session.save_cookies(cookie_path)
+    _success(f"Authenticated. Cookies saved to {cookie_path}")
+
+
+@cli.command()
+@click.pass_context
+def models(ctx: click.Context) -> None:
+    from gradescope_autograde.grader.providers import (
+        LMStudioProvider,
+        ModelRegistry,
+        OpenCodeGoProvider,
+    )
+
+    registry = ModelRegistry()
+    registry.register("opencode-go", OpenCodeGoProvider())
+    registry.register("lmstudio", LMStudioProvider())
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+        transient=True,
+    ) as progress:
+        progress.add_task("Discovering models...", total=None)
+        all_models = registry.discover_all()
+
+    table = Table(title="Available AI Models", show_lines=True)
+    table.add_column("Provider", style="cyan")
+    table.add_column("Model", style="green")
+    table.add_column("Context", justify="right")
+    table.add_column("Multimodal", justify="center")
+    table.add_column("Loaded", justify="center")
+
+    for m in all_models:
+        ctx_len = m.get("context_length", 0)
+        ctx_str = f"{ctx_len:,}" if ctx_len else "—"
+        multi = "Yes" if m.get("multimodal") else "No"
+        loaded_val = m.get("loaded")
+        if loaded_val is None:
+            loaded_str = "—"
+        else:
+            loaded_str = "[green]Yes[/green]" if loaded_val else "[dim]No[/dim]"
+
+        name = m.get("name") or m.get("display_name") or m.get("id", "—")
+        if m.get("id") == "__error__":
+            name = f"[red]{name}[/red]"
+
+        table.add_row(m.get("provider", "?"), name, ctx_str, multi, loaded_str)
+
+    console.print(table)
+
+
+@cli.command("list")
+@click.argument("resource", type=click.Choice(["courses", "assignments", "submissions"]))
+@click.argument("ids", nargs=-1)
+@click.pass_context
+def list_resources(ctx: click.Context, resource: str, ids: tuple[str, ...]) -> None:
+    from gradescope_autograde.client.client import GSClient
+
+    config_path: str = ctx.obj["config_path"]
+    session, cfg = _create_session(config_path)
+    client = GSClient(session)
+
+    try:
+        if resource == "courses":
+            items = client.list_courses()
+            table = Table(title="Courses", show_lines=True)
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            for item in items:
+                table.add_row(str(item.get("id", "")), item.get("name", ""))
+            console.print(table)
+
+        elif resource == "assignments":
+            if len(ids) < 1:
+                _error("Usage: gs-autograde list assignments COURSE_ID")
+            course_id = ids[0]
+            items = client.list_assignments(course_id)
+            table = Table(title=f"Assignments — Course {course_id}", show_lines=True)
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            for item in items:
+                table.add_row(str(item.get("id", "")), item.get("name", ""))
+            console.print(table)
+
+        elif resource == "submissions":
+            if len(ids) < 2:
+                _error("Usage: gs-autograde list submissions COURSE_ID ASSIGNMENT_ID")
+            course_id, assignment_id = ids[0], ids[1]
+            items = client.list_submissions(course_id, assignment_id)
+            table = Table(title=f"Submissions — Assignment {assignment_id}", show_lines=True)
+            table.add_column("ID", style="cyan")
+            table.add_column("Student", style="green")
+            table.add_column("Email")
+            table.add_column("Score")
+            for item in items:
+                table.add_row(
+                    str(item.get("id", "")),
+                    item.get("student_name", ""),
+                    item.get("student_email", ""),
+                    item.get("score", ""),
+                )
+            console.print(table)
+
+    except Exception as exc:
+        _error(f"Failed to list {resource}: {exc}")
+
+
+@cli.command("parse-pdf")
+@click.argument("pdf_path", type=click.Path(exists=True))
+@click.option("--separator", default="## Question", help="Question separator string")
+@click.option("--output", "-o", default=None, help="Save rubric YAML template to this path")
+@click.pass_context
+def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | None) -> None:
+    from gradescope_autograde.grader.pdf_parser import parse_reference_pdf, split_into_questions, extract_text_from_pdf
+
+    try:
+        pages = extract_text_from_pdf(pdf_path)
+        raw_questions = split_into_questions(pages, separator=separator)
+        parsed = parse_reference_pdf(pdf_path)
+    except Exception as exc:
+        _error(f"Failed to parse PDF: {exc}")
+
+    for q in parsed:
+        num = q["question_number"]
+        text = q["text"]
+        ref = q.get("reference_answer", "")
+        pts = q.get("max_points", 10.0)
+
+        content_parts = [f"[bold]Question {num}[/bold] ({pts} pts)\n{text}"]
+        if ref:
+            content_parts.append(f"\n[dim]Reference Answer:[/dim]\n{ref}")
+        panel = Panel("\n".join(content_parts), title=f"Q{num}", border_style="blue")
+        console.print(panel)
+
+    _success(f"Extracted {len(parsed)} questions from {pdf_path}")
+
+    if output:
+        rubric: dict = {
+            "questions": [
+                {
+                    "id": f"q{q['question_number']}",
+                    "title": f"Question {q['question_number']}",
+                    "max_points": q.get("max_points", 10.0),
+                    "type": "short_answer",
+                    "text": q["text"],
+                    "reference_answer": q.get("reference_answer", ""),
+                    "extra_instructions": q.get("extra_instructions", ""),
+                    "rubric": [
+                        {
+                            "name": "correctness",
+                            "points": q.get("max_points", 10.0),
+                            "description": "Answer is correct and complete",
+                        }
+                    ],
+                }
+                for q in parsed
+            ]
+        }
+        out_path = Path(output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(yaml.dump(rubric, default_flow_style=False, allow_unicode=True))
+        _success(f"Rubric template saved to {output}")
+
+
+@cli.command()
+@click.argument("course_id")
+@click.argument("assignment_id")
+@click.option("--rubric", "-r", required=True, type=click.Path(exists=True), help="Path to rubric YAML")
+@click.option("--dry-run", is_flag=True, help="Grade locally without uploading")
+@click.option("--provider", default="opencode-go", help="LLM provider name")
+@click.option("--model", default=None, help="Model ID to use")
+@click.pass_context
+def grade(
+    ctx: click.Context,
+    course_id: str,
+    assignment_id: str,
+    rubric: str,
+    dry_run: bool,
+    provider: str,
+    model: str | None,
+) -> None:
+    from gradescope_autograde.client.client import GSClient
+    from gradescope_autograde.grader.engine import GradingEngine
+    from gradescope_autograde.grader.providers import (
+        LMStudioProvider,
+        ModelRegistry,
+        OpenCodeGoProvider,
+    )
+    from gradescope_autograde.grader.review import ReviewQueue
+    from gradescope_autograde.workflow.export import export_grades_csv
+    from gradescope_autograde.workflow.pipeline import Pipeline
+
+    config_path: str = ctx.obj["config_path"]
+
+    rubric_path = Path(rubric)
+    with open(rubric_path, encoding="utf-8") as fh:
+        rubric_data = yaml.safe_load(fh)
+
+    session, cfg = _create_session(config_path)
+    client = GSClient(session)
+
+    registry = ModelRegistry()
+    registry.register("opencode-go", OpenCodeGoProvider(
+        model=model or cfg.llm.model,
+        api_key=cfg.llm.api_key or None,
+    ))
+    registry.register("lmstudio", LMStudioProvider(model=model))
+
+    try:
+        llm_provider = registry.get_provider(provider)
+    except KeyError as exc:
+        _error(str(exc))
+
+    engine = GradingEngine(provider=llm_provider, temperature=cfg.llm.temperature)
+    review_queue = ReviewQueue(threshold=cfg.workflow.review_threshold)
+    pipeline = Pipeline(client=client, engine=engine, review_queue=review_queue)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+        transient=False,
+    ) as progress:
+        task = progress.add_task("Grading submissions...", total=None)
+        result = pipeline.run(
+            course_id=course_id,
+            assignment_id=assignment_id,
+            rubric=rubric_data,
+            dry_run=dry_run,
+        )
+        progress.update(task, description="Grading complete!", completed=100)
+
+    summary = result["summary"]
+    table = Table(title="Grading Summary", show_lines=True)
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", justify="right", style="green")
+    table.add_row("Total", str(summary.get("total", 0)))
+    table.add_row("Completed", str(summary.get("completed", 0)))
+    table.add_row("Failed", str(summary.get("failed", 0)))
+    table.add_row("Needs Review", str(result.get("review_count", 0)))
+    console.print(table)
+
+    output_dir = Path(cfg.output.grades_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    results_path = output_dir / f"{course_id}_{assignment_id}_results.json"
+    results_path.write_text(json.dumps(result["results"], indent=2, ensure_ascii=False))
+    _success(f"Results saved to {results_path}")
+
+    if dry_run:
+        console.print("[yellow]Dry run — no grades were uploaded.[/yellow]")
+
+
+@cli.command()
+@click.argument("course_id")
+@click.argument("assignment_id")
+@click.option("--results", "-r", required=True, type=click.Path(exists=True), help="Path to results JSON")
+@click.pass_context
+def upload(ctx: click.Context, course_id: str, assignment_id: str, results: str) -> None:
+    from gradescope_autograde.client.client import GSClient
+
+    config_path: str = ctx.obj["config_path"]
+
+    results_path = Path(results)
+    with open(results_path, encoding="utf-8") as fh:
+        data = json.load(fh)
+
+    session, _cfg = _create_session(config_path)
+    client = GSClient(session)
+
+    success_count = 0
+    fail_count = 0
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+        transient=False,
+    ) as progress:
+        task = progress.add_task(f"Uploading {len(data)} grades...", total=len(data))
+        for entry in data:
+            sub_id = str(entry.get("submission_id", ""))
+            q_id = str(entry.get("question_id", ""))
+            score = float(entry.get("score", 0))
+            feedback = entry.get("feedback", "")
+
+            try:
+                ok = client.submit_grade(course_id, assignment_id, sub_id, q_id, score, feedback)
+                if ok:
+                    success_count += 1
+                else:
+                    fail_count += 1
+            except Exception:
+                fail_count += 1
+
+            progress.advance(task)
+
+    table = Table(title="Upload Summary", show_lines=True)
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", justify="right", style="green")
+    table.add_row("Uploaded", str(success_count))
+    table.add_row("Failed", str(fail_count))
+    console.print(table)
+
+    if fail_count:
+        _error(f"{fail_count} grades failed to upload.")
+    else:
+        _success(f"All {success_count} grades uploaded.")
+
+
+@cli.command()
+@click.option("--state-file", default=".state/review_queue.json", help="Path to review queue state file")
+@click.pass_context
+def review(ctx: click.Context, state_file: str) -> None:
+    from gradescope_autograde.grader.review import ReviewQueue
+
+    state_path = Path(state_file)
+    if not state_path.exists():
+        _error(f"Review queue not found at {state_file}. Run `grade` first.")
+
+    with open(state_path, encoding="utf-8") as fh:
+        items = json.load(fh)
+
+    if not items:
+        _success("No items in review queue.")
+        return
+
+    queue = ReviewQueue()
+    queue._items = items
+
+    console.print(f"[bold]Review Queue[/bold] — {len(items)} items\n")
+
+    for idx, item in enumerate(items):
+        status = item.get("status", "pending")
+        if status != "pending":
+            continue
+
+        panel_content = (
+            f"[bold]Submission:[/bold] {item.get('submission_id', '?')}\n"
+            f"[bold]Question:[/bold] {item.get('question_id', '?')}\n"
+            f"[bold]Score:[/bold] {item.get('score', '?')}\n"
+            f"[bold]Confidence:[/bold] {item.get('confidence', '?')}\n"
+            f"[bold]Reason:[/bold] {item.get('reason', '?')}\n"
+            f"[bold]Feedback:[/bold]\n{item.get('feedback', '')}"
+        )
+        console.print(Panel(panel_content, title=f"Item {idx + 1}/{len(items)}", border_style="yellow"))
+
+        action = console.input("[bold cyan]Approve (a) / Reject (r) / Skip (s)? [/bold cyan]").strip().lower()
+        if action == "a":
+            queue.approve(idx)
+            _success("Approved.")
+        elif action == "r":
+            notes = console.input("[dim]Rejection notes (optional): [/dim]").strip()
+            queue.reject(idx, notes)
+            console.print("[bold red]Rejected.[/bold red]")
+        else:
+            console.print("[dim]Skipped.[/dim]")
+
+    state_path.write_text(json.dumps(queue._items, indent=2, ensure_ascii=False))
+    _success(f"Review state saved to {state_file}")
+
+
+@cli.command()
+@click.option("--results", "-r", required=True, type=click.Path(exists=True), help="Path to results JSON")
+@click.option("--format", "fmt", type=click.Choice(["gradescope", "detailed", "json"]), default="gradescope", help="Export format")
+@click.option("--output", "-o", default=None, help="Output file path (default: auto)")
+@click.pass_context
+def export(ctx: click.Context, results: str, fmt: str, output: str | None) -> None:
+    from gradescope_autograde.workflow.export import export_grades_csv
+
+    results_path = Path(results)
+    with open(results_path, encoding="utf-8") as fh:
+        data = json.load(fh)
+
+    if output:
+        out_path = output
+    else:
+        ext = "json" if fmt == "json" else "csv"
+        out_path = str(results_path.with_suffix(f".{fmt}.{ext}"))
+
+    try:
+        written = export_grades_csv(data, out_path, format_type=fmt)
+        _success(f"Exported {len(data)} results to {written}")
+    except Exception as exc:
+        _error(f"Export failed: {exc}")

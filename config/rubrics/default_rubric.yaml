@@ -1,0 +1,48 @@
+# Default Grading Rubric
+# Define how the LLM should evaluate student answers.
+# Each question section maps to a rubric with criteria and point values.
+
+assignment: "Homework 1"
+total_points: 100
+
+questions:
+  - id: "q1"
+    title: "Explain the concept of recursion"
+    max_points: 10
+    type: "short_answer"          # short_answer | essay | multiple_choice | code
+    rubric:
+      - criterion: "Defines recursion correctly"
+        points: 3
+        description: "Must mention a function calling itself and a base case"
+      - criterion: "Provides a clear example"
+        points: 3
+        description: "Concrete code example or real-world analogy"
+      - criterion: "Explains base case importance"
+        points: 2
+        description: "Mentions infinite recursion risk without base case"
+      - criterion: "Writing quality"
+        points: 2
+        description: "Clear, well-structured, proper terminology"
+
+  - id: "q2"
+    title: "Time complexity analysis"
+    max_points: 15
+    type: "short_answer"
+    rubric:
+      - criterion: "Correct big-O notation"
+        points: 5
+      - criterion: "Explains reasoning"
+        points: 5
+        description: "Walks through the analysis step by step"
+      - criterion: "Identifies best/worst case"
+        points: 3
+      - criterion: "No calculation errors"
+        points: 2
+
+grading_guidelines:
+  # General principles the LLM should follow
+  - "Award partial credit when the student shows understanding but makes minor errors"
+  - "Do not penalize for spelling/grammar unless it affects meaning"
+  - "If an answer is blank, award 0 points"
+  - "If the answer is completely off-topic, award 0 points"
+  - "Flag answers with confidence < 0.7 for human review"
