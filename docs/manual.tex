@@ -258,7 +258,7 @@ gradescope:
 
 # ── LLM Grading Engine ──
 llm:
-  provider: "opencode-go"             # opencode-go|lmstudio|openai|anthropic
+  provider: "opencode-go"             # opencode-go | lmstudio
   model: "deepseek-v4-flash"
   multimodal_model: "mimo-v2.5"
   api_key: "${OPENCODE_GO_API_KEY}"
@@ -425,32 +425,33 @@ gs-autograde tui
 Launches a full-screen Textual-based terminal interface. The TUI guides you through:
 
 \begin{enumerate}[itemsep=3pt]
-    \item \textbf{Course Selection} --- Browse and select from your Gradescope courses using keyboard navigation.
-    \item \textbf{Assignment Selection} --- Pick the assignment to grade from a filterable list.
+    \item \textbf{Course Selection} --- Browse and select from your Gradescope courses. Use \texttt{Tab} to focus the list, \texttt{Space} to toggle selection, then \texttt{Tab+Enter} to continue.
+    \item \textbf{Assignment Selection} --- Pick the assignment to grade.
     \item \textbf{Configuration} --- Set file paths, choose AI model, enter grading instructions.
     \item \textbf{Grading Progress} --- Watch live grading with a progress bar and log output.
     \item \textbf{Results} --- View scores, confidence levels, and flagged items in a sortable table.
 \end{enumerate}
 
 \begin{tipbox}
-\textbf{Keyboard shortcuts:} \texttt{Tab/Shift+Tab} to navigate, \texttt{Enter} to select, \texttt{Escape} to go back, \texttt{q} to quit.
+\textbf{Keyboard navigation:} \texttt{Tab} to move focus, \texttt{Space} to toggle checkboxes, \texttt{Enter} to activate, \texttt{Escape} to go back, \texttt{q} to quit. Selected items appear in \textbf{bold}, unchecked items in dim text.
 \end{tipbox}
 
 \subsection{\texttt{gui} --- Web GUI}
 
 \begin{lstlisting}[language=bash]
-gs-autograde gui                     # Default: http://127.0.0.1:8080
-gs-autograde gui --port 3000         # Custom port
+gs-autograde gui                          # Default: http://127.0.0.1:8080
+gs-autograde gui --port 3000              # Custom port
+gs-autograde --config my-config.yaml gui  # Custom config path
 \end{lstlisting}
 
 Opens a cross-platform web interface in your browser with a 5-step grading wizard:
 
 \begin{enumerate}[itemsep=3pt]
-    \item \textbf{Login} --- Authenticate with your Gradescope credentials.
-    \item \textbf{Select Assignment} --- Choose course and assignment from dropdown menus.
-    \item \textbf{Configure} --- Upload question/answer PDFs, rubric YAML, set extra instructions, pick model.
-    \item \textbf{Grade} --- Run grading with live progress display.
-    \item \textbf{Export} --- Download results as Gradescope-compatible CSV.
+    \item \textbf{Login} --- Authenticate with your Gradescope credentials (stored in session for subsequent steps).
+    \item \textbf{Select Assignment} --- Choose course, fetch assignments, pick one.
+    \item \textbf{Configure} --- Upload question/answer PDFs, rubric YAML (auto-parsed), set extra instructions, pick provider (OpenCode Go / LM Studio) and model.
+    \item \textbf{Grade} --- Run grading with live progress display and log output.
+    \item \textbf{Export} --- Download results as Gradescope CSV, detailed CSV, or JSON.
 \end{enumerate}
 
 % ════════════════════════════════════════════════════════════

@@ -9,7 +9,7 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 ## Features
 
 - **AI-powered grading** — evaluate student answers against YAML rubrics using LLMs
-- **Multiple LLM backends** — OpenCode Go (cloud), LM Studio (local/private), OpenAI, Anthropic
+- **Multiple LLM backends** — OpenCode Go (cloud), LM Studio (local/private)
 - **PDF question parsing** — extract questions and reference answers from instructor PDFs
 - **Confidence-based review** — flags uncertain grades for human review
 - **Interactive TUI** — terminal UI with course/assignment selection, model picker, live progress
@@ -187,7 +187,7 @@ gradescope:
   max_retries: 3
 
 llm:
-  provider: "opencode-go"             # opencode-go | lmstudio | openai | anthropic
+  provider: "opencode-go"             # opencode-go | lmstudio
   model: "deepseek-v4-flash"          # Text grading (1M context)
   multimodal_model: "mimo-v2.5"       # For image/PDF submissions
   api_key: "${OPENCODE_GO_API_KEY}"   # Reads from environment
@@ -252,21 +252,24 @@ Launches a full-screen Textual-based terminal interface with:
 - **Live grading** — watch progress with a progress bar and log output
 - **Results review** — view scores with confidence levels and flags
 
-Keyboard navigation: Tab/Shift+Tab to move, Enter to select, Escape to go back, q to quit.
+Keyboard navigation: `Tab` to move focus, `Space` to toggle selection, `Enter` to activate,
+`Escape` to go back, `q` to quit. Selected items appear in **bold**, unchecked items in dim.
 
 ### `gui` — Web GUI
 
 ```bash
-gs-autograde gui                    # Open at http://127.0.0.1:8080
-gs-autograde gui --port 3000        # Custom port
+gs-autograde gui                          # Open at http://127.0.0.1:8080
+gs-autograde gui --port 3000              # Custom port
+gs-autograde --config my-config.yaml gui  # Custom config path
 ```
 
 Launches a cross-platform web interface (NiceGUI) that opens in your browser. Features:
 - **5-step wizard**: Login → Select Assignment → Configure → Grade → Export
-- **File upload**: Drag & drop question PDFs and rubric YAML files
-- **Model selection**: Dropdown to pick provider and model
+- **File upload**: Drag & drop question PDFs and rubric YAML files (auto-parses YAML rubrics)
+- **Provider selection**: Choose between OpenCode Go (cloud) and LM Studio (local)
+- **Extra instructions**: Add per-assignment grading notes (injected into rubric)
 - **Live progress**: Real-time grading progress with log output
-- **Results table**: View scores, export to Gradescope CSV
+- **Results table**: View scores, export to Gradescope CSV / Detailed CSV / JSON
 
 ### LM Studio Auto-Management
 
