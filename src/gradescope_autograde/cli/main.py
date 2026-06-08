@@ -465,3 +465,21 @@ def export(ctx: click.Context, results: str, fmt: str, output: str | None) -> No
         _success(f"Exported {len(data)} results to {written}")
     except Exception as exc:
         _error(f"Export failed: {exc}")
+
+
+@cli.command()
+@click.option("--host", default="127.0.0.1", help="Host to bind to")
+@click.option("--port", default=8080, help="Port to listen on")
+def gui(host: str, port: int) -> None:
+    """Launch web GUI in browser."""
+    from gradescope_autograde.gui import run_gui
+
+    run_gui(host=host, port=port)
+
+
+@cli.command()
+@click.pass_context
+def tui(ctx: click.Context) -> None:
+    from gradescope_autograde.tui import run_tui
+
+    run_tui()

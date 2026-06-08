@@ -1,0 +1,125 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from textual import on
+from textual.app import ComposeResult
+from textual.containers import Vertical
+from textual.screen import Screen
+from textual.widgets import Button, Footer, Header, Input, Label, Static, TextArea
+
+from gradescope_autograde.tui.widgets.model_selector import ModelSelector
+
+
+class ConfigScreen(Screen):
+    def __init__(
+        self,
+        course_id: str,
+        course_name: str,
+        assignment_id: str,
+        assignment_title: str,
+    ) -> None:
+        super().__init__()
+        self.course_id = course_id
+        self.course_name = course_name
+        self.assignment_id = assignment_id
+        self.assignment_title = assignment_title
+
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("escape", "go_back", "Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Vertical(
+            Label("Grading Configuration", classes="screen-title"),
+            Static(
+                f"Course: {self.course_name}\n"
+                f"Assignment: {self.assignment_title}"
+            ),
+            Label("Question PDF Path", classes="field-label"),
+            Input(
+                placeholder="data/input/question.pdf",
+                id="question-pdf",
+            ),
+            Label("Rubric YAML Path", classes="field-label"),
+            Input(
+                placeholder="config/rubrics/default_rubric.yaml",
+                id="rubric-path",
+            ),
+            Label("Extra Grading Instructions (optional)", classes="field-label"),
+            TextArea(
+                text="",
+                id="extra-instructions",
+            ),
+            Label("AI Model", classes="field-label"),
+            ModelSelector(),
+            Static("", id="config-status"),
+            Vertical(
+                Button("Back", id="back", variant="default"),
+                Button("Start Grading", id="start", variant="success"),
+                id="button-bar",
+            ),
+            id="main",
+        )
+        yield Footer()
+
+    @on(Button.Pressed, "#start")
+    def _on_start(self) -> None:
+        question_pdf = self.query_one("#question-pdf", Input).value.strip()
+        rubric_path = self.query_one("#rubric-path", Input).value.strip()
+        extra_instructions = self.query_one("#extra-instructions", TextArea).text.strip()
+        model_selector = self.query_one("#model-select", ModelSelector)
+
+        status = self.query_one("#config-status", Static)
+
+        if not question_pdf:
+            status.update("[error]Question PDF path is required.[/]")
+            return
+
+        if not rubric_path:
+            rubric_path = "config/rubrics/default_rubric.yaml"
+
+        model_info = model_selector.selected_model
+        if model_info is None:
+            status.update("[error]Please select an AI model.[/]")
+            return
+
+        provider_name, model_id = model_info
+
+        rubric_data = self._load_rubric(rubric_path)
+        if rubric_data is None:
+            status.update(f"[error]Could not load rubric from: {rubric_path}[/]")
+            return
+
+        from gradescope_autograde.tui.screens.grading_screen import GradingScreen
+
+        self.app.push_screen(
+            GradingScreen(
+                course_id=self.course_id,
+                assignment_id=self.assignment_id,
+                question_pdf=question_pdf,
+                rubric_path=rubric_path,
+                rubric_data=rubric_data,
+                extra_instructions=extra_instructions,
+                provider_name=provider_name,
+                model_id=model_id,
+            )
+        )
+
+    def _load_rubric(self, path: str) -> dict | None:
+        try:
+            import yaml
+
+            rubric_path = Path(path)
+            if not rubric_path.exists():
+                return None
+            with open(rubric_path, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f)
+        except Exception:
+            return None
+
+    @on(Button.Pressed, "#back")
+    def _on_back(self) -> None:
+        self.app.pop_screen()
