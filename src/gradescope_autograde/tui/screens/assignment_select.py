@@ -67,12 +67,12 @@ class AssignmentSelectScreen(Screen):
             return
 
         status.update(
-            f"Found {len(assignments)} assignment(s). Select one and press Continue."
+            f"Found {len(assignments)} assignment(s). [secondary]Tab to list, Space to select, Tab to Continue, Enter[/]"
         )
 
         selections = []
         for a in assignments:
-            title = a.get("title", "Untitled")
+            title = a.get("name") or a.get("title", "Untitled")
             due = a.get("due_date", "No due date")
             submissions = a.get("submission_count", "?")
             label = f"{title}  |  Due: {due}  |  Submissions: {submissions}"

@@ -88,7 +88,7 @@ class CourseSelectScreen(Screen):
             status.update("No courses found on your Gradescope account.")
             return
 
-        status.update(f"Found {len(courses)} course(s). Select one and press Continue.")
+        status.update(f"Found {len(courses)} course(s). [secondary]Tab to list, Space to select, Tab to Continue, Enter[/]")
 
         selections = [
             Selection(
