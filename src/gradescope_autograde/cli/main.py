@@ -61,27 +61,58 @@ def cli(ctx: click.Context, config: str) -> None:
 @cli.command()
 @click.option("--email", "-e", default=None, help="Gradescope email")
 @click.option("--password", "-p", default=None, help="Gradescope password")
-@click.option("--cookie", default=None, help="Raw cookie string (e.g. 'session=abc123')")
+@click.option("--cookie", "-C", default=None, help="Session cookie string")
+@click.option("--browser", "-b", is_flag=True, help="Open browser for manual login (OAuth-like)")
+@click.option("--timeout", type=int, default=120, help="Browser login timeout in seconds")
 @click.pass_context
-def login(ctx: click.Context, email: str | None, password: str | None, cookie: str | None) -> None:
+def login(
+    ctx: click.Context,
+    email: str | None,
+    password: str | None,
+    cookie: str | None,
+    browser: bool,
+    timeout: int,
+) -> None:
+    """Authenticate with Gradescope.
+
+    Supports three login methods:
+    1. Email + password (auto-fills login form)
+    2. Cookie string (from browser DevTools)
+    3. Browser login (opens browser, you log in manually, cookies auto-captured)
+    """
     from gradescope_autograde.transport.session import GSSession
 
-    if not cookie and (not email or not password):
-        _error("Provide either --email/--password or --cookie.")
+    if browser:
+        from gradescope_autograde.client.browser import BrowserCookieExtractor
+
+        cookie = BrowserCookieExtractor.from_interactive_browser(timeout=timeout)
+        if not cookie:
+            console.print("[red]Browser login failed or timed out.[/red]")
+            return
+
+    if cookie:
+        session = GSSession()
+        session.login_with_cookie(cookie)
+        session.save_cookies(Path(".cookies/session.txt"))
+        console.print("[green]✅ Logged in with cookie![/green]")
+        return
+
+    if not email:
+        email = click.prompt("Email")
+    if not password:
+        password = click.prompt("Password", hide_input=True)
 
     session = GSSession()
     try:
-        if cookie:
-            session.login_with_cookie(cookie)
+        if session.login(email, password):
+            session.save_cookies(Path(".cookies/session.txt"))
+            console.print("[green]✅ Login successful![/green]")
         else:
-            if not session.login(email, password):
-                _error("Login failed. Check email/password.")
+            console.print("[red]❌ Login failed. Check your credentials.[/red]")
+            console.print("[yellow]💡 Try: gs-autograde login --browser[/yellow]")
     except Exception as exc:
-        _error(f"Login failed: {exc}")
-
-    cookie_path = Path(".cookies/session.txt")
-    session.save_cookies(cookie_path)
-    _success(f"Authenticated. Cookies saved to {cookie_path}")
+        console.print(f"[red]❌ Login error: {exc}[/red]")
+        console.print("[yellow]💡 Try: gs-autograde login --browser[/yellow]")
 
 
 @cli.command()

@@ -92,3 +92,88 @@ class BrowserCookieExtractor:
             return None
         except Exception:
             return None
+
+    @staticmethod
+    def from_interactive_browser(timeout: int = 120) -> str | None:
+        """Open browser for manual Gradescope login, auto-capture cookies on success.
+
+        Launches a visible Chromium browser window to gradescope.com/login.
+        The user logs in manually. Once login succeeds (dashboard loads),
+        cookies are automatically extracted and the browser closes.
+
+        Args:
+            timeout: Maximum seconds to wait for the user to complete login.
+
+        Returns:
+            Cookie string compatible with ``GSSession.login_with_cookie()``,
+            or ``None`` if login timed out or failed.
+        """
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return None
+
+        print("\n🔐 Opening browser for Gradescope login...")
+        print("   Please log in with your credentials in the browser window.")
+        print(f"   Waiting up to {timeout}s for login to complete...\n")
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=False,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 800},
+                user_agent=(
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36"
+                ),
+            )
+            page = context.new_page()
+
+            try:
+                page.goto("https://www.gradescope.com/login", wait_until="domcontentloaded")
+                print("   Browser opened. Complete your login...")
+
+                page.wait_for_url(
+                    "https://www.gradescope.com/**",
+                    timeout=timeout * 1000,
+                )
+
+                current_url = page.url
+                if "login" in current_url.lower():
+                    print("   ⚠️  Still on login page. Login may have failed.")
+                    return None
+
+                cookies = context.cookies()
+                cookie_string = "; ".join(
+                    f"{c['name']}={c['value']}"
+                    for c in cookies
+                    if "gradescope" in c.get("domain", "")
+                )
+
+                if not cookie_string:
+                    print("   ⚠️  No Gradescope cookies found.")
+                    return None
+
+                session_cookie = next(
+                    (c for c in cookies if c["name"] == "_gradescope_session"),
+                    None,
+                )
+                if session_cookie:
+                    cookie_string = f"_gradescope_session={session_cookie['value']}"
+
+                print(f"   ✅ Login successful! Session cookie captured.")
+                return cookie_string
+
+            except Exception as e:
+                error_msg = str(e)
+                if "Timeout" in error_msg:
+                    print(f"\n   ⏰ Login timed out after {timeout}s.")
+                else:
+                    print(f"\n   ❌ Error: {e}")
+                return None
+
+            finally:
+                browser.close()
