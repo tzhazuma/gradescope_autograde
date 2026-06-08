@@ -299,9 +299,17 @@ gs-autograde login --email user@university.edu
 
 # Cookie-based (from browser DevTools → Application → Cookies)
 gs-autograde login --cookie "_gradescope_session=abc123..."
+
+# Browser-based (opens Chromium, you log in manually, cookies auto-captured)
+gs-autograde login --browser
+
+# Browser-based with custom timeout (default: 120s)
+gs-autograde login --browser --timeout 300
 \end{lstlisting}
 
 Successful login saves cookies to \texttt{.cookies/session.txt}.
+
+The \texttt{--browser} flag opens a Chromium window (via Playwright) where you log into Gradescope manually. After successful login, the tool automatically extracts session cookies from the browser. This is the most reliable login method as it handles any CAPTCHA or 2FA challenges that Gradescope may present. Requires Playwright: \texttt{pip install -e ".[browser]"}.
 
 \subsection{\texttt{list} — Browse Resources}
 

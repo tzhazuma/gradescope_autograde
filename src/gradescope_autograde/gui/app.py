@@ -19,9 +19,13 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                 "assignment_id": None,
                 "question_pdf": None,
                 "rubric_yaml": None,
+                "rubric_data": None,
                 "extra_instructions": "",
                 "selected_model": "deepseek-v4-flash",
                 "selected_provider": "opencode-go",
+                "email": "",
+                "password": "",
+                "session_cookie": "",
                 "logged_in": False,
                 "courses": [],
                 "assignments": [],
@@ -48,6 +52,9 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                             success = session.login(email.value, password.value)
                             if success:
                                 state["logged_in"] = True
+                                state["email"] = email.value
+                                state["password"] = password.value
+                                state["session"] = session
                                 from gradescope_autograde.client.client import GSClient
 
                                 client = GSClient(session)
@@ -96,13 +103,12 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                             ui.notify("Select a course first", type="warning")
                             return
                         try:
-                            from gradescope_autograde.config import load_config
                             from gradescope_autograde.client.client import GSClient
                             from gradescope_autograde.transport.session import GSSession
 
-                            config = load_config()
-                            session = GSSession()
-                            session.login(config.auth.email, config.auth.password)
+                            session = state.get("session") or GSSession()
+                            if not state.get("logged_in"):
+                                session.login(state["email"], state["password"])
                             client = GSClient(session)
                             assignments = client.list_assignments(state["course_id"])
                             state["assignments"] = assignments
@@ -129,9 +135,14 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                         on_upload=lambda e: state.update(question_pdf=e.content),
                     ).classes("w-full mb-4")
 
+                    def _on_rubric_upload(e):
+                        import yaml
+                        state["rubric_yaml"] = e.content
+                        state["rubric_data"] = yaml.safe_load(e.content.decode("utf-8"))
+
                     ui.upload(
                         label="Rubric YAML",
-                        on_upload=lambda e: state.update(rubric_yaml=e.content),
+                        on_upload=_on_rubric_upload,
                     ).classes("w-full mb-4")
 
                     ui.label("Extra Grading Instructions:")
@@ -191,9 +202,12 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                             )
                             from gradescope_autograde.workflow.pipeline import Pipeline
 
+                            import yaml
+
                             config = load_config()
-                            session = GSSession()
-                            session.login(config.auth.email, config.auth.password)
+                            session = state.get("session") or GSSession()
+                            if not state.get("logged_in"):
+                                session.login(state["email"], state["password"])
                             client = GSClient(session)
 
                             provider = OpenCodeGoProvider(model=state["selected_model"])
@@ -203,7 +217,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                             )
                             pipeline_obj = Pipeline(client, engine, review_queue)
 
-                            rubric: dict = {"questions": []}
+                            rubric = state.get("rubric_data") or {"questions": []}
 
                             log_output.push(
                                 f"Fetching submissions for assignment "

@@ -220,6 +220,7 @@ output:
 gs-autograde login                          # Interactive
 gs-autograde login --email user@univ.edu    # Email-based
 gs-autograde login --cookie "session=..."   # Cookie from browser DevTools
+gs-autograde login --browser                # Browser-based (auto-capture cookies)
 ```
 
 ### `list` — Browse Gradescope

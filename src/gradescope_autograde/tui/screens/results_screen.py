@@ -6,7 +6,7 @@ from pathlib import Path
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Footer, Header, Label, Static
 
@@ -29,7 +29,7 @@ class ResultsScreen(Screen):
             Label("Grading Results", classes="screen-title"),
             Static(self._build_summary(), id="summary"),
             DataTable(id="results-table"),
-            Vertical(
+            Horizontal(
                 Button("Export CSV", id="export-csv", variant="default"),
                 Button("Export JSON", id="export-json", variant="default"),
                 Button("Done", id="done", variant="primary"),

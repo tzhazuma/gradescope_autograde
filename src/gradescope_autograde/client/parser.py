@@ -33,7 +33,7 @@ def parse_courses(html: str) -> list[dict]:
                 continue
             seen.add(course_id)
 
-            name = link.get_text(strip=True) or ""
+            name = link.get_text(strip=True, separator=" ") or ""
             courses.append({"id": course_id, "name": name})
 
         return courses
@@ -63,7 +63,7 @@ def parse_assignments(html: str) -> list[dict]:
                 continue
             seen.add(assignment_id)
 
-            name = link.get_text(strip=True) or ""
+            name = link.get_text(strip=True, separator=" ") or ""
             assignments.append({"id": assignment_id, "name": name})
 
         if not assignments:
@@ -79,7 +79,7 @@ def parse_assignments(html: str) -> list[dict]:
                     continue
                 seen.add(assignment_id)
 
-                name = link.get_text(strip=True) or ""
+                name = link.get_text(strip=True, separator=" ") or ""
                 assignments.append({"id": assignment_id, "name": name})
 
         return assignments

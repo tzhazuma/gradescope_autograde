@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from textual import on, work
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, SelectionList, Static
 from textual.widgets.selection_list import Selection
 
 from gradescope_autograde.client.client import GSClient
-from gradescope_autograde.tui.screens.course_select import CourseSelectScreen
 
 
 class AssignmentSelectScreen(Screen):
@@ -31,7 +32,7 @@ class AssignmentSelectScreen(Screen):
             ),
             Static("Loading assignments...", id="status"),
             SelectionList(id="assignment-list"),
-            Vertical(
+            Horizontal(
                 Button("Back", id="back", variant="default"),
                 Button("Continue", id="continue", variant="primary", disabled=True),
                 id="button-bar",
@@ -47,7 +48,7 @@ class AssignmentSelectScreen(Screen):
     @work(exclusive=True, thread=True)
     def _load_assignments(self) -> None:
         try:
-            session = CourseSelectScreen._create_session(self)
+            session = self._create_session()
             client = GSClient(session)
             assignments = client.list_assignments(self.course_id)
             self.app.call_from_thread(self._populate_assignments, assignments)
@@ -78,7 +79,7 @@ class AssignmentSelectScreen(Screen):
             selections.append(Selection(label, a.get("id", "")))
 
         selection_list.clear_options()
-        selection_list._add_options(selections)
+        selection_list.add_options(selections)
 
     def _show_error(self, message: str) -> None:
         self.query_one("#status", Static).update(f"[error]{message}[/]")
@@ -113,6 +114,30 @@ class AssignmentSelectScreen(Screen):
                 assignment_title=assignment_title,
             )
         )
+
+    def _create_session(self):
+        from gradescope_autograde.config import load_config
+        from gradescope_autograde.transport.session import GSSession
+
+        cfg = load_config(self.app.config_path)
+        session = GSSession(
+            base_url=cfg.gradescope.base_url,
+            request_delay=cfg.gradescope.request_delay,
+            max_retries=cfg.gradescope.max_retries,
+        )
+
+        cookie_path = Path(".cookies/session.txt")
+        if cookie_path.exists():
+            session.load_cookies(cookie_path)
+        elif cfg.auth.cookie:
+            session.login_with_cookie(cfg.auth.cookie)
+        elif cfg.auth.email and cfg.auth.password:
+            if not session.login(cfg.auth.email, cfg.auth.password):
+                raise RuntimeError("Login failed. Check credentials.")
+        else:
+            raise RuntimeError("No credentials found. Run `gs-autograde login` first.")
+
+        return session
 
     @on(Button.Pressed, "#back")
     def _on_back(self) -> None:

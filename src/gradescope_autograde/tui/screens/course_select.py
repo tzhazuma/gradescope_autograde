@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual import on, work
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, SelectionList, Static
 from textual.widgets.selection_list import Selection
@@ -25,7 +25,7 @@ class CourseSelectScreen(Screen):
             Label("Select a Course", classes="screen-title"),
             Static("Connecting to Gradescope...", id="status"),
             SelectionList(id="course-list"),
-            Vertical(
+            Horizontal(
                 Button("Refresh", id="refresh", variant="default"),
                 Button("Continue", id="continue", variant="primary", disabled=True),
                 id="button-bar",
@@ -98,7 +98,7 @@ class CourseSelectScreen(Screen):
             for c in courses
         ]
         selection_list.clear_options()
-        selection_list._add_options(selections)
+        selection_list.add_options(selections)
 
     def _show_error(self, message: str) -> None:
         status = self.query_one("#status", Static)

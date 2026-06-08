@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from textual import work
+from textual import on, work
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Label, ProgressBar, RichLog, Static
 
@@ -51,7 +51,7 @@ class GradingScreen(Screen):
             Static(f"Assignment: {self.assignment_id}"),
             ProgressBar(total=100, id="progress"),
             RichLog(id="log", highlight=True, wrap=True),
-            Vertical(
+            Horizontal(
                 Button("View Results", id="results", variant="primary", disabled=True),
                 id="button-bar",
             ),

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Static, TextArea
 
@@ -56,7 +56,7 @@ class ConfigScreen(Screen):
             Label("AI Model", classes="field-label"),
             ModelSelector(),
             Static("", id="config-status"),
-            Vertical(
+            Horizontal(
                 Button("Back", id="back", variant="default"),
                 Button("Start Grading", id="start", variant="success"),
                 id="button-bar",
