@@ -3,8 +3,14 @@ from __future__ import annotations
 from nicegui import ui
 
 
-def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
-    """Launch the NiceGUI web interface for Gradescope AutoGrade."""
+def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "config/config.yaml") -> None:
+    """Launch the NiceGUI web interface for Gradescope AutoGrade.
+
+    Args:
+        host: Host to bind the web server to.
+        port: Port to listen on.
+        config_path: Path to the configuration YAML file.
+    """
 
     @ui.page("/")
     def main_page() -> None:
@@ -25,8 +31,8 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                 "selected_provider": "opencode-go",
                 "email": "",
                 "password": "",
-                "session_cookie": "",
                 "logged_in": False,
+                "session": None,
                 "courses": [],
                 "assignments": [],
                 "results": [],
@@ -112,6 +118,8 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                             client = GSClient(session)
                             assignments = client.list_assignments(state["course_id"])
                             state["assignments"] = assignments
+                            if not assignments:
+                                ui.notify("No assignments found for this course.", type="warning")
                             assign_select.options = {
                                 a.get("id", ""): a.get("title", a.get("name", ""))
                                 for a in assignments
@@ -157,8 +165,6 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                             options={
                                 "opencode-go": "OpenCode Go",
                                 "lmstudio": "LM Studio (Local)",
-                                "openai": "OpenAI",
-                                "anthropic": "Anthropic",
                             },
                             value="opencode-go",
                             on_change=lambda e: state.update(
@@ -197,20 +203,27 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                             from gradescope_autograde.client.client import GSClient
                             from gradescope_autograde.grader.engine import GradingEngine
                             from gradescope_autograde.grader.review import ReviewQueue
+                            from gradescope_autograde.grader.providers.lmstudio import (
+                                LMStudioProvider,
+                            )
                             from gradescope_autograde.grader.providers.opencode_go import (
                                 OpenCodeGoProvider,
                             )
                             from gradescope_autograde.workflow.pipeline import Pipeline
 
-                            import yaml
-
-                            config = load_config()
+                            config = load_config(config_path)
                             session = state.get("session") or GSSession()
                             if not state.get("logged_in"):
                                 session.login(state["email"], state["password"])
                             client = GSClient(session)
 
-                            provider = OpenCodeGoProvider(model=state["selected_model"])
+                            if state["selected_provider"] == "lmstudio":
+                                provider = LMStudioProvider(model=state["selected_model"])
+                            else:
+                                provider = OpenCodeGoProvider(
+                                    model=state["selected_model"],
+                                    api_key=config.llm.api_key or None,
+                                )
                             engine = GradingEngine(provider)
                             review_queue = ReviewQueue(
                                 threshold=config.workflow.review_threshold
@@ -218,6 +231,13 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080) -> None:
                             pipeline_obj = Pipeline(client, engine, review_queue)
 
                             rubric = state.get("rubric_data") or {"questions": []}
+                            extra = extra_instructions.value.strip()
+                            if extra and rubric.get("questions"):
+                                for q in rubric["questions"]:
+                                    existing = q.get("extra_instructions", "") or ""
+                                    q["extra_instructions"] = (
+                                        f"{existing}\n{extra}".strip()
+                                    )
 
                             log_output.push(
                                 f"Fetching submissions for assignment "

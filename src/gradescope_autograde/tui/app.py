@@ -65,22 +65,13 @@ class GradescopeTUI(App):
         color: $accent;
         margin-top: 1;
     }
-    /* Make toggle ON/OFF states visually distinct */
-    ToggleButton {
-        padding: 0 1;
+    ToggleButton .toggle--label {
+        text-style: dim;
+        color: $text-muted;
     }
     ToggleButton.-on .toggle--label {
         text-style: bold;
         color: $text;
-    }
-    ToggleButton:not(.-on) .toggle--label {
-        text-style: dim;
-        color: $text-muted;
-    }
-    .selection-hint {
-        color: $secondary;
-        text-style: italic;
-        margin-bottom: 1;
     }
     """
 

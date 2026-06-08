@@ -501,11 +501,13 @@ def export(ctx: click.Context, results: str, fmt: str, output: str | None) -> No
 @cli.command()
 @click.option("--host", default="127.0.0.1", help="Host to bind to")
 @click.option("--port", default=8080, help="Port to listen on")
-def gui(host: str, port: int) -> None:
+@click.pass_context
+def gui(ctx: click.Context, host: str, port: int) -> None:
     """Launch web GUI in browser."""
     from gradescope_autograde.gui import run_gui
 
-    run_gui(host=host, port=port)
+    config_path: str = ctx.obj["config_path"]
+    run_gui(host=host, port=port, config_path=config_path)
 
 
 @cli.command()
