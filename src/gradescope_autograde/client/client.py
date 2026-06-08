@@ -27,9 +27,13 @@ class GSClient:
         return parse_courses(resp.text)
 
     def list_assignments(self, course_id: str) -> list[dict]:
-        """GET /courses/{course_id} → parse assignment list."""
+        """GET /courses/{course_id}/assignments → parse assignment list.
+
+        Uses the dedicated assignments page which includes both active and
+        completed assignments via embedded ``gon`` JSON data.
+        """
         self._limiter.wait()
-        resp = self._session.get(f"/courses/{course_id}")
+        resp = self._session.get(f"/courses/{course_id}/assignments")
         return parse_assignments(resp.text)
 
     def list_submissions(

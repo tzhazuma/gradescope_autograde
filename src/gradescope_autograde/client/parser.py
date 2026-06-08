@@ -41,14 +41,65 @@ def parse_courses(html: str) -> list[dict]:
         return []
 
 
+def _extract_gon_assignments(html: str) -> list[dict] | None:
+    """Extract assignment list from Gradescope's embedded ``gon`` JSON data.
+
+    Gradescope renders the full assignment list (active + completed) as
+    JavaScript variables in a ``<script>`` tag on the ``/assignments`` page:
+    ``gon.unversioned_assignments`` (active) and
+    ``gon.ineligible_assignments`` (closed/completed).
+
+    Returns a list of dicts with ``id`` and ``name`` keys, or ``None``
+    if no gon data was found.
+    """
+    import json, re
+
+    match = re.search(
+        r"window\.gon\s*=\s*\{.*?gon\.(unversioned_assignments|ineligible_assignments)\s*=\s*(\[.*?\]);",
+        html,
+        re.DOTALL,
+    )
+    if not match:
+        return None
+
+    assignments: list[dict] = []
+    seen: set[str] = set()
+
+    for key in ("unversioned_assignments", "ineligible_assignments"):
+        pattern = rf"gon\.{key}\s*=\s*(\[.*?\]);"
+        m = re.search(pattern, html, re.DOTALL)
+        if m:
+            try:
+                items = json.loads(m.group(1))
+                for item in items:
+                    aid = str(item.get("id", ""))
+                    title = item.get("title") or ""
+                    if aid and aid not in seen:
+                        seen.add(aid)
+                        assignments.append({"id": aid, "name": title})
+            except json.JSONDecodeError:
+                continue
+
+    return assignments if assignments else None
+
+
 def parse_assignments(html: str) -> list[dict]:
     """Extract assignment list from a Gradescope course page.
 
-    Gradescope renders assignments as table rows or assignment cards.
-    Each row typically contains the assignment name, deadline, and
-    a link to the assignment page.
+    Tries two strategies in order:
+    1. **gon JSON data** — embedded ``<script>`` tag on the ``/assignments``
+       page with the full list (active + completed). This is the preferred
+       source because it includes closed assignments.
+    2. **HTML anchor links** — fallback for the main course dashboard page
+       which only shows the currently active assignment.
     """
     try:
+        # Strategy 1: embedded gon JSON (full list, includes completed)
+        result = _extract_gon_assignments(html)
+        if result is not None:
+            return result
+
+        # Strategy 2: HTML anchor links (fallback, active only)
         soup = BeautifulSoup(html, "html.parser")
         assignments: list[dict] = []
         seen: set[str] = set()
