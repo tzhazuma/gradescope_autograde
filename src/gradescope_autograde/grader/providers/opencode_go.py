@@ -33,23 +33,34 @@ _MODELS = [
 
 class OpenCodeGoProvider(LLMProvider):
 
+    _ENV_KEY = "OPENCODE_GO_API_KEY"
+
     def __init__(
         self,
         model: str = _DEFAULT_MODEL,
         api_key: str | None = None,
     ) -> None:
         self._model = model
-        # Create a custom httpx client that bypasses system proxies
-        # to avoid SOCKS proxy issues (socksio not installed)
+        # Resolve API key: check if config value is an unresolved ${VAR} template
+        resolved = api_key
+        if resolved and resolved.startswith("${") and resolved.endswith("}"):
+            resolved = os.environ.get(self._ENV_KEY) or os.environ.get("OPENAI_API_KEY") or None
+        if not resolved:
+            resolved = os.environ.get(self._ENV_KEY) or os.environ.get("OPENAI_API_KEY") or None
+        if not resolved:
+            import logging
+            logging.getLogger(__name__).warning(
+                "No OpenCode Go API key found. "
+                f"Set {self._ENV_KEY} or OPENAI_API_KEY environment variable."
+            )
+
         _http_client = httpx.Client(
-            transport=httpx.HTTPTransport(
-                proxy=None,
-            ),
+            transport=httpx.HTTPTransport(proxy=None),
             follow_redirects=True,
         )
         self._client = OpenAI(
             base_url=_BASE_URL,
-            api_key=api_key or os.environ.get("OPENCODE_GO_API_KEY", ""),
+            api_key=resolved or "",
             http_client=_http_client,
         )
 

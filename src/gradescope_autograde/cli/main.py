@@ -360,6 +360,7 @@ def grade(
             verbose=verbose,
             upload=effective_upload,
             with_pages=with_pages,
+            log_func=lambda msg, v: console.print(f"[dim]{msg}[/dim]") if v else None,
         )
         progress.update(task, description="Grading complete!", completed=100)
 

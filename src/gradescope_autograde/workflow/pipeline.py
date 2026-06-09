@@ -40,6 +40,10 @@ class Pipeline:
     # Public API
     # ------------------------------------------------------------------
 
+    def _log(self, msg: str, verbose: bool = False) -> None:
+        if verbose:
+            print(f"[pipeline] {msg}", flush=True)
+
     def run(
         self,
         course_id: str,
@@ -50,6 +54,7 @@ class Pipeline:
         verbose: bool = False,
         upload: bool | None = None,
         with_pages: bool = False,
+        log_func: callable | None = None,
     ) -> dict:
         """Run the full grading pipeline.
 
@@ -63,20 +68,25 @@ class Pipeline:
                 ``upload`` takes precedence when set.
             question_ids: Optional list of question IDs to grade (e.g. ``["q1",
                 "q3"]``). When ``None`` (default), all questions are graded.
-            verbose: If ``True``, include full traceback in error feedback.
+            verbose: If ``True``, include full traceback in error feedback and
+                log step-by-step progress.
             upload: Explicit upload toggle. ``True`` = submit grades,
                 ``False`` = dry-run only. When ``None`` (default), falls
                 back to ``dry_run`` (``not dry_run``).
             with_pages: If ``True``, include ``[Page N of M]`` markers in
                 extracted PDF text to help the LLM locate answers when
                 students haven't mapped pages to questions.
+            log_func: Optional callable for progress messages. Called with
+                ``(msg, verbose)``. Defaults to ``print``.
 
         Returns:
             Summary dict with keys ``summary``, ``review_count``, and ``results``.
         """
+        log = log_func or self._log
         submissions = self.client.list_submissions(course_id, assignment_id)
         self._progress["total"] = len(submissions)
         results: list[dict] = []
+        log(f"Fetched {len(submissions)} submissions", verbose)
 
         for i, sub in enumerate(submissions):
             try:
@@ -84,22 +94,28 @@ class Pipeline:
                 student_name = sub.get("student_name", f"Student {i}")
 
                 # Fetch submission content
+                log(f"[{i+1}/{len(submissions)}] Fetching PDF for {student_name}", verbose)
                 content = self.client.get_submission_content(
                     course_id, assignment_id, sub_id
                 )
+                log(f"  PDF: {len(content)} bytes", verbose)
 
                 # Extract text from content (handles PDF and plain text)
                 answer_text = self._extract_answer(content, with_pages=with_pages)
+                log(f"  Extracted {len(answer_text)} chars of text", verbose)
 
                 question_results: list[dict] = []
                 all_qs = rubric.get("questions", [])
                 if question_ids:
                     all_qs = [q for q in all_qs if q.get("id") in question_ids]
                 for question in all_qs:
+                    qid = question.get("id", "?")
+                    log(f"  Calling LLM for question {qid}...", verbose)
                     extra = question.get("extra_instructions", "")
                     result = self.engine.grade(question, answer_text, extra)
                     result["student_name"] = student_name
                     result["submission_id"] = sub_id
+                    log(f"  → {qid}: score={result.get('score', '?')}, confidence={result.get('confidence', '?'):.0%}", verbose)
                     question_results.append(result)
 
                     # Check review queue
@@ -108,6 +124,7 @@ class Pipeline:
                 # Submit grades unless dry run
                 should_upload = upload if upload is not None else not dry_run
                 if should_upload:
+                    log(f"  Uploading {len(question_results)} grades...", verbose)
                     for r in question_results:
                         self.client.submit_grade(
                             course_id,
@@ -117,6 +134,9 @@ class Pipeline:
                             r["score"],
                             r.get("feedback", ""),
                         )
+                    log(f"  Upload complete", verbose)
+                else:
+                    log(f"  Dry run — grades not uploaded", verbose)
 
                 results.extend(question_results)
                 self._progress["completed"] += 1
@@ -127,6 +147,7 @@ class Pipeline:
                 if verbose:
                     import traceback
                     msg = f"Pipeline error:\n{traceback.format_exc()}"
+                log(f"  ERROR: {e}", verbose)
                 results.append(
                     {
                         "submission_id": sub.get("id", str(i)),
