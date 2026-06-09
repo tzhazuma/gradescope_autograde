@@ -7,6 +7,23 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+
+def _load_dotenv(path: str = ".env") -> None:
+    """Load variables from a .env file into the environment if present."""
+    env_path = Path(path)
+    if not env_path.exists():
+        return
+    with env_path.open() as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip("\"'")
+            if key and not os.environ.get(key):
+                os.environ[key] = val
+
 import yaml
 
 
@@ -105,10 +122,12 @@ def load_config(path: str = "config/config.yaml") -> AppConfig:
     """Load and parse YAML config with env var interpolation.
 
     Resolution order:
-        1. Try *path* as-is.
-        2. Fall back to ``path`` with ``.yaml`` → ``.example.yaml``.
-        3. Raise FileNotFoundError if neither exists.
+        1. Load ``.env`` file if present (without overwriting existing env vars).
+        2. Try *path* as-is.
+        3. Fall back to ``path`` with ``.yaml`` → ``.example.yaml``.
+        4. Raise FileNotFoundError if neither exists.
     """
+    _load_dotenv(".env")
     config_path = Path(path)
 
     if not config_path.exists():
