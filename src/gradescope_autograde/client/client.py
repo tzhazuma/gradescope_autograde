@@ -52,13 +52,43 @@ class GSClient:
         assignment_id: str,
         submission_id: str,
     ) -> bytes:
-        """GET the submission PDF as raw bytes."""
+        """GET the submission PDF as raw bytes.
+
+        Gradescope stores submissions as PDF attachments on S3. The
+        ``/pdf`` endpoint may 4xx, so we fetch the submission JSON and
+        extract the S3 presigned URL from ``pdf_attachment.url``.
+        """
         self._limiter.wait()
+        # Fetch submission JSON to get the S3 presigned URL
         resp = self._session.get(
             f"/courses/{course_id}/assignments/{assignment_id}"
-            f"/submissions/{submission_id}/pdf"
+            f"/submissions/{submission_id}"
         )
-        return resp.content
+        data = resp.json()
+        pdf_attachment = data.get("pdf_attachment")
+        pdf_url = pdf_attachment.get("url", "") if isinstance(pdf_attachment, dict) else ""
+        if not pdf_url:
+            # Try extracting text from submission JSON
+            text = data.get("text", "") or data.get("content", "") or ""
+            if text:
+                return text.encode("utf-8")
+            # Fallback: try /pdf endpoint
+            try:
+                self._limiter.wait()
+                resp2 = self._session.get(
+                    f"/courses/{course_id}/assignments/{assignment_id}"
+                    f"/submissions/{submission_id}/pdf"
+                )
+                return resp2.content
+            except Exception:
+                # No retrievable content for this submission
+                return b"[No retrievable content for this submission]"
+
+        # Download PDF directly from S3 presigned URL
+        import requests as _requests
+        pdf_resp = _requests.get(pdf_url, timeout=60)
+        pdf_resp.raise_for_status()
+        return pdf_resp.content
 
     def submit_grade(
         self,

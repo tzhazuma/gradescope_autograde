@@ -27,9 +27,14 @@ class LMStudioProvider(LLMProvider):
 
     def __init__(self, model: str | None = None) -> None:
         self._model = model
+        _http_client = httpx.Client(
+            transport=httpx.HTTPTransport(proxy=None),
+            follow_redirects=True,
+        )
         self._client = OpenAI(
             base_url=_BASE_URL,
             api_key="lm-studio",
+            http_client=_http_client,
         )
 
     def complete(

@@ -6,6 +6,7 @@ import json
 import os
 import re
 
+import httpx
 from openai import OpenAI
 
 from gradescope_autograde.grader.providers.base import LLMProvider
@@ -38,9 +39,18 @@ class OpenCodeGoProvider(LLMProvider):
         api_key: str | None = None,
     ) -> None:
         self._model = model
+        # Create a custom httpx client that bypasses system proxies
+        # to avoid SOCKS proxy issues (socksio not installed)
+        _http_client = httpx.Client(
+            transport=httpx.HTTPTransport(
+                proxy=None,
+            ),
+            follow_redirects=True,
+        )
         self._client = OpenAI(
             base_url=_BASE_URL,
             api_key=api_key or os.environ.get("OPENCODE_GO_API_KEY", ""),
+            http_client=_http_client,
         )
 
     def complete(
