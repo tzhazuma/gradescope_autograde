@@ -20,6 +20,7 @@ class GradescopeTUI(App):
         width: 100%;
         height: 1fr;
         padding: 1 2;
+        overflow-y: auto;
     }
     .screen-title {
         text-style: bold;

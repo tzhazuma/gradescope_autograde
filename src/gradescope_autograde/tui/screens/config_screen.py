@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Static, TextArea
 
@@ -32,7 +32,7 @@ class ConfigScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Vertical(
+        yield VerticalScroll(
             Label("Grading Configuration", classes="screen-title"),
             Static(
                 f"Course: {self.course_name}\n"
@@ -80,6 +80,7 @@ class ConfigScreen(Screen):
         )
         yield Footer()
 
+    
     def _on_browse_file(self, input_id: str, file_types: list[str] | None = None) -> None:
         from gradescope_autograde.utils.file_picker import pick_file
 
