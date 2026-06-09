@@ -65,6 +65,10 @@ class ConfigScreen(Screen):
             Horizontal(
                 Button("Verbose Mode", id="toggle-verbose", variant="default"),
                 Static("   OFF", id="verbose-status"),
+                Button("Upload", id="toggle-upload", variant="default"),
+                Static("   OFF", id="upload-status"),
+                Button("Page Markers", id="toggle-pages", variant="default"),
+                Static("   OFF", id="pages-status"),
             ),
             Static("", id="config-status"),
             Horizontal(
@@ -99,6 +103,18 @@ class ConfigScreen(Screen):
         self._verbose = not getattr(self, "_verbose", False)
         self.query_one("#toggle-verbose", Button).variant = "primary" if self._verbose else "default"
         self.query_one("#verbose-status", Static).update("   ON" if self._verbose else "   OFF")
+
+    @on(Button.Pressed, "#toggle-upload")
+    def _toggle_upload(self) -> None:
+        self._upload = not getattr(self, "_upload", False)
+        self.query_one("#toggle-upload", Button).variant = "primary" if self._upload else "default"
+        self.query_one("#upload-status", Static).update("   ON" if self._upload else "   OFF")
+
+    @on(Button.Pressed, "#toggle-pages")
+    def _toggle_pages(self) -> None:
+        self._with_pages = not getattr(self, "_with_pages", False)
+        self.query_one("#toggle-pages", Button).variant = "primary" if self._with_pages else "default"
+        self.query_one("#pages-status", Static).update("   ON" if self._with_pages else "   OFF")
 
     @on(Button.Pressed, "#start")
     def _on_start(self) -> None:
@@ -145,6 +161,8 @@ class ConfigScreen(Screen):
                 model_id=model_id,
                 question_ids=question_ids,
                 verbose=getattr(self, "_verbose", False),
+                upload=getattr(self, "_upload", False),
+                with_pages=getattr(self, "_with_pages", False),
             )
         )
 

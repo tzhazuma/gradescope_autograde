@@ -29,6 +29,8 @@ class GradingScreen(Screen):
         model_id: str,
         question_ids: list[str] | None = None,
         verbose: bool = False,
+        upload: bool = False,
+        with_pages: bool = False,
     ) -> None:
         super().__init__()
         self.course_id = course_id
@@ -41,6 +43,8 @@ class GradingScreen(Screen):
         self.model_id = model_id
         self._question_ids = question_ids
         self._verbose = verbose
+        self._upload = upload
+        self._with_pages = with_pages
         self._results: dict | None = None
 
     BINDINGS = [
@@ -159,6 +163,32 @@ class GradingScreen(Screen):
                         "flags": ["needs_review"],
                     })
                     update_progress(i + 1, total)
+
+            # Upload grades if enabled
+            if self._upload:
+                log_msg("Uploading grades to Gradescope...")
+                uploaded = 0
+                failed_upload = 0
+                for r in results_list:
+                    if "error" in r.get("flags", []):
+                        failed_upload += 1
+                        continue
+                    try:
+                        client.submit_grade(
+                            self.course_id,
+                            self.assignment_id,
+                            r.get("submission_id", ""),
+                            r["question_id"],
+                            r["score"],
+                            r.get("feedback", ""),
+                        )
+                        uploaded += 1
+                    except Exception as exc:
+                        failed_upload += 1
+                        log_msg(f"  [error]Upload failed for {r.get('student_name', '?')}: {exc}[/]")
+                log_msg(f"Uploaded: {uploaded}, Failed: {failed_upload}")
+            else:
+                log_msg("[yellow]Dry run — grades were NOT uploaded.[/]")
 
             self._results = {
                 "summary": {

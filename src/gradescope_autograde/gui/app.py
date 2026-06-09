@@ -34,6 +34,8 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                 "logged_in": False,
                 "session": None,
                 "verbose": False,
+                "upload": False,
+                "with_pages": False,
                 "courses": [],
                 "assignments": [],
                 "results": [],
@@ -207,6 +209,14 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                     state["verbose"] = False
                     verbose_checkbox.on("change", lambda e: state.update(verbose=e.args))
 
+                    upload_checkbox = ui.checkbox("Upload grades to Gradescope (DANGER!)")
+                    state["upload"] = False
+                    upload_checkbox.on("change", lambda e: state.update(upload=e.args))
+
+                    pages_checkbox = ui.checkbox("Add [Page N of M] markers for unmapped PDFs")
+                    state["with_pages"] = False
+                    pages_checkbox.on("change", lambda e: state.update(with_pages=e.args))
+
                     ui.button("Next", on_click=lambda: stepper.next()).classes("mt-4")
 
                 with ui.step("Grade"):
@@ -275,9 +285,11 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                                 state["course_id"],
                                 state["assignment_id"],
                                 rubric,
-                                dry_run=True,
+                                dry_run=not state.get("upload", False),
                                 question_ids=q_ids,
                                 verbose=state.get("verbose", False),
+                                upload=state.get("upload", False) or None,
+                                with_pages=state.get("with_pages", False),
                             )
 
                             state["results"] = result.get("results", [])

@@ -281,6 +281,8 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @click.argument("assignment_id")
 @click.option("--rubric", "-r", required=True, type=click.Path(exists=True), help="Path to rubric file (.yaml/.yml/.pdf/.tex)")
 @click.option("--dry-run", is_flag=True, help="Grade locally without uploading")
+@click.option("--upload", is_flag=True, help="Upload grades to Gradescope after grading (overrides --dry-run)")
+@click.option("--with-pages", is_flag=True, help="Include [Page N of M] markers for unmapped PDF submissions")
 @click.option("--provider", default="opencode-go", help="LLM provider name")
 @click.option("--model", default=None, help="Model ID to use")
 @click.option("--questions", "-q", default=None, help="Comma-separated question IDs to grade (e.g. 'q1,q3'). Default: all")
@@ -292,6 +294,8 @@ def grade(
     assignment_id: str,
     rubric: str,
     dry_run: bool,
+    upload: bool,
+    with_pages: bool,
     provider: str,
     model: str | None,
     questions: str | None,
@@ -341,6 +345,12 @@ def grade(
     ) as progress:
         task = progress.add_task("Grading submissions...", total=None)
         q_ids = questions.split(",") if questions else None
+        # --upload overrides --dry-run
+        effective_upload = None
+        if upload:
+            effective_upload = True
+        elif dry_run:
+            effective_upload = False
         result = pipeline.run(
             course_id=course_id,
             assignment_id=assignment_id,
@@ -348,6 +358,8 @@ def grade(
             dry_run=dry_run,
             question_ids=q_ids,
             verbose=verbose,
+            upload=effective_upload,
+            with_pages=with_pages,
         )
         progress.update(task, description="Grading complete!", completed=100)
 
