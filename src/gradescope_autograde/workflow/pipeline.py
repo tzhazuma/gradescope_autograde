@@ -42,7 +42,8 @@ class Pipeline:
 
     def _log(self, msg: str, verbose: bool = False) -> None:
         if verbose:
-            print(f"[pipeline] {msg}", flush=True)
+            import sys
+            print(f"[pipeline] {msg}", file=sys.stderr, flush=True)
 
     def run(
         self,

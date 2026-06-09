@@ -322,9 +322,14 @@ def grade(
     client = GSClient(session)
 
     registry = ModelRegistry()
+    raw_key = cfg.llm.api_key
+    if raw_key and not raw_key.startswith("${"):
+        console.print("[dim]OpenCode Go API key: loaded from config/env[/dim]")
+    elif verbose:
+        error_console.print("[yellow]OpenCode Go API key: NOT SET — set OPENCODE_GO_API_KEY or use .env[/yellow]")
     registry.register("opencode-go", OpenCodeGoProvider(
         model=model or cfg.llm.model,
-        api_key=cfg.llm.api_key or None,
+        api_key=raw_key or None,
     ))
     registry.register("lmstudio", LMStudioProvider(model=model))
 
@@ -360,7 +365,7 @@ def grade(
             verbose=verbose,
             upload=effective_upload,
             with_pages=with_pages,
-            log_func=lambda msg, v: console.print(f"[dim]{msg}[/dim]") if v else None,
+            log_func=lambda msg, v: error_console.print(f"[dim]{msg}[/dim]") if v else None,
         )
         progress.update(task, description="Grading complete!", completed=100)
 

@@ -52,8 +52,18 @@ def _pick_macos(
         if result.returncode == 0:
             path = result.stdout.strip()
             return path if path else None
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
+        if result.stderr:
+            import sys
+            print(f"[file_picker] osascript error: {result.stderr.strip()}", file=sys.stderr)
+    except subprocess.TimeoutExpired:
+        import sys
+        print("[file_picker] osascript timed out", file=sys.stderr)
+    except FileNotFoundError:
+        import sys
+        print("[file_picker] osascript not found on macOS", file=sys.stderr)
+    except OSError as e:
+        import sys
+        print(f"[file_picker] osascript OS error: {e}", file=sys.stderr)
     return None
 
 
