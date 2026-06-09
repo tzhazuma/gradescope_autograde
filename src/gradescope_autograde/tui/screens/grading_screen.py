@@ -144,7 +144,10 @@ class GradingScreen(Screen):
                     )
 
                     # --- MULTIMODAL PATH ---
-                    if self._extraction in ("multimodal", "auto"):
+                    use_mm = self._extraction == "multimodal" or (
+                        self._extraction == "auto" and self.model_id in ("mimo-v2.5",)
+                    )
+                    if use_mm:
                         import io
                         import pymupdf
                         from PIL import Image
