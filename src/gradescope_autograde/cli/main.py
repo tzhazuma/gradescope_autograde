@@ -539,8 +539,61 @@ def gui(ctx: click.Context, host: str, port: int) -> None:
 
 
 @cli.command("list-questions")
-@click.argument("rubric_path", type=click.Path(exists=True))
-def list_rubric_questions(rubric_path: str) -> None:
+@click.argument("source", required=False, default=None)
+@click.option("--course", "-c", default=None, help="Course ID (for fetching from Gradescope)")
+@click.option("--assignment", "-a", default=None, help="Assignment ID (for fetching from Gradescope)")
+@click.pass_context
+def list_questions_cli(ctx: click.Context, source: str | None, course: str | None, assignment: str | None) -> None:
+    """List questions from a rubric file or a Gradescope assignment.
+
+    \b
+    Examples:
+      # From a rubric YAML file:
+      gs-autograde list-questions config/rubrics/default_rubric.yaml
+
+      # From a Gradescope assignment (fetches review grades table):
+      gs-autograde list-questions --course 1273022 --assignment 8113109
+    """
+    if source and Path(source).exists():
+        from gradescope_autograde.grader.rubric_parser import list_rubric_questions as _lrq
+
+        questions = _lrq(source)
+        if not questions:
+            _error("No questions found or unsupported format.")
+        table = Table(title=f"Questions from rubric: {source}", show_lines=True)
+        table.add_column("ID", style="cyan")
+        table.add_column("Title", style="green")
+        table.add_column("Max Points", justify="right")
+        table.add_column("Type")
+        for q in questions:
+            table.add_row(
+                q.get("id", "?"),
+                q.get("title", "?")[:40],
+                str(q.get("max_points", "?")),
+                q.get("type", "?"),
+            )
+        console.print(table)
+        return
+
+    if course and assignment:
+        config_path: str = ctx.obj["config_path"]
+        session, _cfg = _create_session(config_path)
+        from gradescope_autograde.client.client import GSClient
+        client = GSClient(session)
+        gs_questions = client.list_questions(course, assignment)
+        if gs_questions:
+            table = Table(title=f"Questions from Gradescope (course {course}, assignment {assignment})", show_lines=True)
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            for q in gs_questions:
+                table.add_row(q.get("id", "?"), q.get("name", "")[:60])
+            console.print(table)
+        else:
+            console.print("[yellow]No per-question columns in Gradescope for this assignment.[/yellow]")
+            console.print("[yellow]Use 'gs-autograde list-questions <rubric.yaml>' to see rubric questions.[/yellow]")
+        return
+
+    _error("Provide either a rubric file path, or --course and --assignment.")
     """List questions from a rubric file (YAML only)."""
     from gradescope_autograde.grader.rubric_parser import list_rubric_questions as _lrq
 

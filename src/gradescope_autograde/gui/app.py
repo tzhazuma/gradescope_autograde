@@ -180,14 +180,34 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         msg = "\n".join(f"• {q.get('id', '?')}: {q.get('title', '?')} ({q.get('max_points', '?')} pts)" for q in qs)
                         ui.notify(msg, type="info", multi_line=True, close_button=True)
 
-                    ui.button("Show Questions from Rubric", on_click=_show_rubric_questions).classes("mb-4")
-
                     ui.label("Extra Grading Instructions:")
                     extra_instructions = ui.textarea(
                         placeholder="Add any special grading instructions here..."
                     ).classes("w-full mb-4")
 
-                    ui.label("Questions (comma-separated IDs from rubric, e.g. q1,q4):")
+                    async def _fetch_gs_questions():
+                        if not state.get("course_id") or not state.get("assignment_id"):
+                            ui.notify("Select course and assignment first", type="warning")
+                            return
+                        try:
+                            from gradescope_autograde.client.client import GSClient
+                            from gradescope_autograde.transport.session import GSSession
+                            session_gs = state.get("session") or GSSession()
+                            client = GSClient(session_gs)
+                            qs = client.list_questions(state["course_id"], state["assignment_id"])
+                            if qs:
+                                msg = "\n".join(f"• {q['id']}: {q['name']}" for q in qs)
+                                ui.notify(f"GS Questions:\n{msg}", multi_line=True, close_button=True)
+                            else:
+                                ui.notify("No per-question columns in Gradescope. Use rubric IDs (q1,q2...).", type="warning")
+                        except Exception as e:
+                            ui.notify(f"Error: {e}", type="negative")
+
+                    with ui.row():
+                        ui.button("Fetch GS Questions", on_click=_fetch_gs_questions)
+                        ui.button("Show Rubric Questions", on_click=_show_rubric_questions)
+
+                    ui.label("Questions (comma-separated IDs, e.g. q1,q4):")
                     question_ids_input = ui.input(
                         placeholder="Leave empty to grade all questions"
                     ).classes("w-full mb-4")

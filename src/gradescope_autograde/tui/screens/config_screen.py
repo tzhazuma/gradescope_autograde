@@ -58,9 +58,13 @@ class ConfigScreen(Screen):
             ),
             Label("AI Model", classes="field-label"),
             ModelSelector(),
-            Label("Questions to Grade (comma-separated IDs, see rubric file)", classes="field-label"),
+            Horizontal(
+                Button("Fetch GS Questions", id="fetch-gs-questions", variant="default"),
+                Button("Show Rubric Questions", id="show-questions", variant="default"),
+            ),
+            Label("Questions to Grade (comma-separated IDs, e.g. q1,q4)", classes="field-label"),
             Input(
-                placeholder='e.g. q1,q4 or leave empty for all',
+                placeholder='Leave empty for all questions',
                 id="question-ids",
             ),
             Horizontal(
@@ -110,6 +114,35 @@ class ConfigScreen(Screen):
         btn.variant = "primary" if val else "default"
         btn.label = label_on if val else label_off
         return val
+
+    @on(Button.Pressed, "#fetch-gs-questions")
+    def _fetch_gs_questions(self) -> None:
+        status = self.query_one("#config-status", Static)
+        try:
+            from gradescope_autograde.client.client import GSClient
+            from gradescope_autograde.transport.session import GSSession
+            from gradescope_autograde.config import load_config
+
+            cfg = load_config(self.app.config_path)
+            session = GSSession(
+                base_url=cfg.gradescope.base_url,
+                request_delay=cfg.gradescope.request_delay,
+                max_retries=cfg.gradescope.max_retries,
+            )
+            cookie_path = Path(".cookies/session.txt")
+            if cookie_path.exists():
+                session.load_cookies(cookie_path)
+            client = GSClient(session)
+            gs_qs = client.list_questions(self.course_id, self.assignment_id)
+            if gs_qs:
+                lines = ["Questions from Gradescope:"]
+                for q in gs_qs:
+                    lines.append(f"  {q['id']}: {q['name']}")
+                status.update("\n".join(lines))
+            else:
+                status.update("[yellow]No per-question columns in Gradescope for this assignment.[/]")
+        except Exception as e:
+            status.update(f"[error]Failed to fetch: {e}[/]")
 
     @on(Button.Pressed, "#show-questions")
     def _show_questions(self) -> None:
