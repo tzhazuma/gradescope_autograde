@@ -313,12 +313,23 @@ gs-autograde parse-pdf questions.pdf --separator "## Q" # Custom separator
 # Dry run (grade locally, don't upload)
 gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --dry-run
 
-# Full run with specific model
-gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --provider lmstudio --model gemma4-12b
+# Upload grades to Gradescope
+gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --upload
 
-# Resume interrupted run (auto-detects from .grading_state.json)
-gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml
+# Grade specific questions only (from rubric IDs)
+gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --questions q1,q4
+
+# Multimodal grading (handwritten PDFs → images → LLM)
+gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --model mimo-v2.5 --extraction multimodal
+
+# Generate rubric on-the-fly from question/answer PDFs
+gs-autograde grade COURSE_ID ASSIGN_ID -r answer.pdf --gen-rubric --rubric-gen-model deepseek-v4-pro
+
+# Full run with details
+gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --upload --verbose
 ```
+
+> ⚠️ **Upload safety**: Grades with `error`, `extraction_error`, or `pipeline_error` flags are **automatically skipped** during upload to prevent overwriting existing grades with incorrect values.
 
 ### `review` — Review Flagged Grades
 
@@ -333,6 +344,14 @@ Interactive: shows each flagged submission with student name, AI score, confiden
 ```bash
 gs-autograde upload COURSE_ID ASSIGN_ID --results results.json
 ```
+
+> **Note**: For assignments with individual questions, the `--upload` flag on `grade` posts grades directly. For single-score assignments, use the CSV export workflow:
+> ```bash
+> gs-autograde grade ... --questions q4 --dry-run  # grade first
+> gs-autograde export -r results.json --format gradescope  # export CSV
+> # Then import the CSV manually on Gradescope: Assignments → Review Grades → Import Scores
+> ```
+> Uploads automatically skip submissions with error flags.
 
 ### `export` — Export Results
 
