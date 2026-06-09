@@ -176,11 +176,11 @@ class ConfigScreen(Screen):
 
     @on(Button.Pressed, "#toggle-extraction")
     def _toggle_extraction(self) -> None:
-        modes = ["auto", "ocr", "multimodal"]
+        modes = ["auto", "text", "ocr", "multimodal"]
         current = getattr(self, "_extraction", "auto")
         idx = (modes.index(current) + 1) % len(modes) if current in modes else 0
         self._extraction = modes[idx]
-        labels = {"auto": "Extract:Auto", "ocr": "Extract:OCR", "multimodal": "Extract:MM"}
+        labels = {"auto": "Extract:Auto", "text": "Extract:Text", "ocr": "Extract:OCR", "multimodal": "Extract:MM"}
         btn = self.query_one("#toggle-extraction", Button)
         btn.label = labels[self._extraction]
         btn.variant = "primary" if self._extraction != "auto" else "default"

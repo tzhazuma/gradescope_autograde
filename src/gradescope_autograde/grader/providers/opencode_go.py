@@ -23,8 +23,20 @@ _MODELS = [
         "multimodal": False,
     },
     {
+        "id": "deepseek-v4-pro",
+        "name": "DeepSeek V4 Pro",
+        "context_length": 1_000_000,
+        "multimodal": False,
+    },
+    {
         "id": "mimo-v2.5",
         "name": "MiMo V2.5",
+        "context_length": 1_000_000,
+        "multimodal": True,
+    },
+    {
+        "id": "mimo-v2.5-pro",
+        "name": "MiMo V2.5 Pro",
         "context_length": 1_000_000,
         "multimodal": True,
     },

@@ -121,6 +121,10 @@ class Pipeline:
                         _og._MULTIMODAL_MODEL,
                     )
 
+                # "text" mode: skip multimodal entirely
+                if extraction == "text":
+                    use_multimodal = False
+
                 if use_multimodal:
                     # Render PDF pages as images for multimodal LLM
                     import io
@@ -187,8 +191,14 @@ class Pipeline:
                 # Submit grades unless dry run
                 should_upload = upload if upload is not None else not dry_run
                 if should_upload:
-                    log(f"  Uploading {len(question_results)} grades...", verbose)
+                    upload_count = 0
+                    skip_count = 0
                     for r in question_results:
+                        flags = r.get("flags", [])
+                        if any(f in flags for f in ("pipeline_error", "content_error", "extraction_error", "parse_error")):
+                            skip_count += 1
+                            log(f"  Skipping {r.get('student_name','?')}/{r.get('question_id','?')} — has errors", verbose)
+                            continue
                         self.client.submit_grade(
                             course_id,
                             assignment_id,
@@ -197,7 +207,8 @@ class Pipeline:
                             r["score"],
                             r.get("feedback", ""),
                         )
-                    log(f"  Upload complete", verbose)
+                        upload_count += 1
+                    log(f"  Uploaded {upload_count}, skipped {skip_count} (errors)", verbose)
                 else:
                     log(f"  Dry run — grades not uploaded", verbose)
 

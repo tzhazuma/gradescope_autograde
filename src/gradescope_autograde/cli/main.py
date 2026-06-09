@@ -283,10 +283,13 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @click.option("--dry-run", is_flag=True, help="Grade locally without uploading")
 @click.option("--upload", is_flag=True, help="Upload grades to Gradescope after grading (overrides --dry-run)")
 @click.option("--with-pages", is_flag=True, help="Include [Page N of M] markers for unmapped PDF submissions")
-@click.option("--extraction", type=click.Choice(["auto", "ocr", "multimodal"]), default="auto", help="How to handle scanned/handwritten PDFs: auto (default), ocr, or multimodal (requires mimo-v2.5)")
+@click.option("--extraction", type=click.Choice(["auto", "text", "ocr", "multimodal"]), default="auto", help="PDF text extraction: auto (default), text (LaTeX PDFs), ocr (handwriting), or multimodal (images for mimo-v2.5)")
 @click.option("--provider", default="opencode-go", help="LLM provider name")
 @click.option("--model", default=None, help="Model ID to use")
 @click.option("--questions", "-q", default=None, help="Comma-separated question IDs to grade (e.g. 'q1,q3'). Default: all. Use 'rubric list-questions <file>' to see IDs.")
+@click.option("--gen-rubric", is_flag=True, help="Generate rubric from question/answer PDFs instead of loading one")
+@click.option("--rubric-gen-model", default="deepseek-v4-pro", help="Model for rubric generation (default: deepseek-v4-pro)")
+@click.option("--rubric-gen-provider", default="opencode-go", help="Provider for rubric generation (opencode-go or lmstudio)")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed error messages")
 @click.pass_context
 def grade(
@@ -301,6 +304,9 @@ def grade(
     provider: str,
     model: str | None,
     questions: str | None,
+    gen_rubric: bool,
+    rubric_gen_model: str,
+    rubric_gen_provider: str,
     verbose: bool,
 ) -> None:
     from gradescope_autograde.client.client import GSClient
@@ -316,9 +322,33 @@ def grade(
 
     config_path: str = ctx.obj["config_path"]
 
-    from gradescope_autograde.grader.rubric_parser import load_rubric as _load_rubric
+    # Generate rubric from reference PDFs if --gen-rubric is set
+    if gen_rubric:
+        if verbose:
+            error_console.print(f"[dim]Generating rubric using {rubric_gen_provider}/{rubric_gen_model}...[/dim]")
+        from gradescope_autograde.grader.rubric_generator import generate_rubric as _gen_rubric
 
-    rubric_data = _load_rubric(rubric)
+        session, cfg = _create_session(config_path)
+        answer_pdf = rubric  # when --gen-rubric, --rubric is used as answer PDF path
+        question_pdf = rubric.replace("ans", "")  # guess: hw9ans.pdf → hw9.pdf
+        from pathlib import Path
+        if not Path(question_pdf).exists():
+            question_pdf = rubric  # fallback: use rubric path as question PDF
+            answer_pdf = None
+        rubric_data = _gen_rubric(
+            question_pdf=question_pdf,
+            answer_pdf=answer_pdf,
+            extra_instructions="",
+            model=rubric_gen_model,
+            api_key=cfg.llm.api_key or None,
+            provider_type=rubric_gen_provider if rubric_gen_provider != "opencode-go" else "opencode-go",
+        )
+        if verbose:
+            import json
+            error_console.print(f"[dim]Generated rubric with {len(rubric_data.get('questions',[]))} question(s)[/dim]")
+    else:
+        from gradescope_autograde.grader.rubric_parser import load_rubric as _load_rubric
+        rubric_data = _load_rubric(rubric)
 
     session, cfg = _create_session(config_path)
     client = GSClient(session)

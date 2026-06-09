@@ -254,6 +254,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         label="Extraction mode",
                         options={
                             "auto": "Auto (OCR for text models, images for multimodal)",
+                            "text": "Text only (LaTeX PDFs, no OCR)",
                             "ocr": "OCR only (tesseract, works with all models)",
                             "multimodal": "Multimodal (send images to LLM, requires mimo-v2.5)",
                         },

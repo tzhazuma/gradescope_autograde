@@ -259,10 +259,13 @@ class GradingScreen(Screen):
             if self._upload:
                 log_msg("Uploading grades to Gradescope...")
                 uploaded = 0
+                skip_upload = 0
                 failed_upload = 0
                 for r in results_list:
-                    if "error" in r.get("flags", []):
-                        failed_upload += 1
+                    flags = r.get("flags", [])
+                    if any(f in flags for f in ("pipeline_error", "content_error", "extraction_error", "parse_error")):
+                        skip_upload += 1
+                        log_msg(f"  [warn]Skipping {r.get('student_name', '?')}/{r.get('question_id','?')} — has errors[/]")
                         continue
                     try:
                         client.submit_grade(
@@ -277,7 +280,7 @@ class GradingScreen(Screen):
                     except Exception as exc:
                         failed_upload += 1
                         log_msg(f"  [error]Upload failed for {r.get('student_name', '?')}: {exc}[/]")
-                log_msg(f"Uploaded: {uploaded}, Failed: {failed_upload}")
+                log_msg(f"Uploaded: {uploaded}, Skipped (errors): {skip_upload}, Failed: {failed_upload}")
             else:
                 log_msg("[yellow]Dry run — grades were NOT uploaded.[/]")
 
