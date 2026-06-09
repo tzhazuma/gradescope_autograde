@@ -119,7 +119,11 @@ class GradingScreen(Screen):
                     content = client.get_submission_content(
                         self.course_id, self.assignment_id, sub_id
                     )
-                    answer_text = self._extract_answer(content)
+                    if self._verbose:
+                        log_msg(f"  PDF: {len(content)} bytes")
+                    answer_text = self._extract_answer(content, with_pages=self._with_pages)
+                    if self._verbose:
+                        log_msg(f"  Extracted {len(answer_text)} chars of text")
 
                     all_qs = self.rubric_data.get("questions", [])
                     questions = (
@@ -127,6 +131,9 @@ class GradingScreen(Screen):
                         if self._question_ids else all_qs
                     )
                     for question in questions:
+                        qid = question.get("id", "?")
+                        if self._verbose:
+                            log_msg(f"  Calling LLM for {qid}...")
                         result = engine.grade(
                             question=question,
                             student_answer=answer_text,
@@ -141,7 +148,7 @@ class GradingScreen(Screen):
                         max_pts = question.get("max_points", "?")
                         confidence = result.get("confidence", 0)
                         log_msg(
-                            f"  → {question.get('title', 'Q')}: "
+                            f"  → {qid}: "
                             f"{score}/{max_pts} (confidence: {confidence:.0%})"
                         )
 
@@ -252,7 +259,7 @@ class GradingScreen(Screen):
             )
         return provider
 
-    def _extract_answer(self, content: bytes) -> str:
+    def _extract_answer(self, content: bytes, with_pages: bool = False) -> str:
         try:
             return content.decode("utf-8")
         except UnicodeDecodeError:
@@ -260,6 +267,16 @@ class GradingScreen(Screen):
                 import pymupdf
 
                 doc = pymupdf.open(stream=content, filetype="pdf")
+                if with_pages:
+                    pages_text = []
+                    total = len(doc)
+                    for i, page in enumerate(doc):
+                        page_num = i + 1
+                        page_text = page.get_text().strip()
+                        if page_text:
+                            pages_text.append(f"[Page {page_num} of {total}]\n{page_text}")
+                    doc.close()
+                    return "\n\n".join(pages_text)
                 text = "\n".join(page.get_text() for page in doc)
                 doc.close()
                 return text

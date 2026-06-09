@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from textual import on
+from textual import on, work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
@@ -90,13 +90,17 @@ class ConfigScreen(Screen):
             file_types=file_types,
         )
         if path:
-            self.query_one(f"#{input_id}", Input).value = path
+            self.app.call_from_thread(
+                lambda: setattr(self.query_one(f"#{input_id}", Input), "value", path)
+            )
 
     @on(Button.Pressed, "#browse-pdf")
+    @work(thread=True)
     def _browse_pdf(self) -> None:
         self._on_browse_file("question-pdf", ["pdf"])
 
     @on(Button.Pressed, "#browse-rubric")
+    @work(thread=True)
     def _browse_rubric(self) -> None:
         self._on_browse_file("rubric-path", ["yaml", "yml", "pdf", "tex"])
 
