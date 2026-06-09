@@ -64,13 +64,10 @@ class ConfigScreen(Screen):
             ),
             Horizontal(
                 Button("Verbose", id="toggle-verbose", variant="default"),
-                Static("OFF", id="verbose-status"),
                 Button("Upload", id="toggle-upload", variant="default"),
-                Static("OFF", id="upload-status"),
                 Button("Pages", id="toggle-pages", variant="default"),
-                Static("OFF", id="pages-status"),
                 Button("Extract:Auto", id="toggle-extraction", variant="default"),
-                Static("", id="extraction-status"),
+                id="toggle-row",
             ),
             Static("", id="config-status"),
             Horizontal(
@@ -105,23 +102,25 @@ class ConfigScreen(Screen):
     def _browse_rubric(self) -> None:
         self._on_browse_file("rubric-path", ["yaml", "yml", "pdf", "tex"])
 
+    def _toggle_btn(self, btn_id: str, attr: str, label_on: str, label_off: str) -> bool:
+        val = not getattr(self, attr, False)
+        setattr(self, attr, val)
+        btn = self.query_one(f"#{btn_id}", Button)
+        btn.variant = "primary" if val else "default"
+        btn.label = label_on if val else label_off
+        return val
+
     @on(Button.Pressed, "#toggle-verbose")
     def _toggle_verbose(self) -> None:
-        self._verbose = not getattr(self, "_verbose", False)
-        self.query_one("#toggle-verbose", Button).variant = "primary" if self._verbose else "default"
-        self.query_one("#verbose-status", Static).update("   ON" if self._verbose else "   OFF")
+        self._toggle_btn("toggle-verbose", "_verbose", "Verbose*", "Verbose")
 
     @on(Button.Pressed, "#toggle-upload")
     def _toggle_upload(self) -> None:
-        self._upload = not getattr(self, "_upload", False)
-        self.query_one("#toggle-upload", Button).variant = "primary" if self._upload else "default"
-        self.query_one("#upload-status", Static).update("   ON" if self._upload else "   OFF")
+        self._toggle_btn("toggle-upload", "_upload", "Upload*", "Upload")
 
     @on(Button.Pressed, "#toggle-pages")
     def _toggle_pages(self) -> None:
-        self._with_pages = not getattr(self, "_with_pages", False)
-        self.query_one("#toggle-pages", Button).variant = "primary" if self._with_pages else "default"
-        self.query_one("#pages-status", Static).update("   ON" if self._with_pages else "   OFF")
+        self._toggle_btn("toggle-pages", "_with_pages", "Pages*", "Pages")
 
     @on(Button.Pressed, "#toggle-extraction")
     def _toggle_extraction(self) -> None:
@@ -129,11 +128,10 @@ class ConfigScreen(Screen):
         current = getattr(self, "_extraction", "auto")
         idx = (modes.index(current) + 1) % len(modes) if current in modes else 0
         self._extraction = modes[idx]
-        st = self.query_one("#extraction-status", Static)
         labels = {"auto": "Extract:Auto", "ocr": "Extract:OCR", "multimodal": "Extract:MM"}
-        hints = {"auto": "", "ocr": "txt", "multimodal": "img"}
-        self.query_one("#toggle-extraction", Button).label = labels[self._extraction]
-        st.update(hints[self._extraction])
+        btn = self.query_one("#toggle-extraction", Button)
+        btn.label = labels[self._extraction]
+        btn.variant = "primary" if self._extraction != "auto" else "default"
 
     @on(Button.Pressed, "#start")
     def _on_start(self) -> None:
