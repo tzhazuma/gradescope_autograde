@@ -126,3 +126,17 @@ def parse_questions(rubric: dict) -> list[dict]:
         })
 
     return questions
+
+
+def list_rubric_questions(path: str | Path) -> list[dict]:
+    """Load a rubric and return its questions list (for display/selection).
+
+    Each question dict contains ``id``, ``title``, ``max_points``, and
+    ``type`` keys. This is a lightweight alternative to :func:`load_rubric`
+    that does not parse PDF or LaTeX files — only YAML/yml.
+    """
+    p = Path(path)
+    if p.suffix.lower() not in (".yaml", ".yml"):
+        return []
+    rubric = load_rubric(str(p))
+    return parse_questions(rubric)

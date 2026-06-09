@@ -286,7 +286,7 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @click.option("--extraction", type=click.Choice(["auto", "ocr", "multimodal"]), default="auto", help="How to handle scanned/handwritten PDFs: auto (default), ocr, or multimodal (requires mimo-v2.5)")
 @click.option("--provider", default="opencode-go", help="LLM provider name")
 @click.option("--model", default=None, help="Model ID to use")
-@click.option("--questions", "-q", default=None, help="Comma-separated question IDs to grade (e.g. 'q1,q3'). Default: all")
+@click.option("--questions", "-q", default=None, help="Comma-separated question IDs to grade (e.g. 'q1,q3'). Default: all. Use 'rubric list-questions <file>' to see IDs.")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed error messages")
 @click.pass_context
 def grade(
@@ -536,6 +536,30 @@ def gui(ctx: click.Context, host: str, port: int) -> None:
 
     config_path: str = ctx.obj["config_path"]
     run_gui(host=host, port=port, config_path=config_path)
+
+
+@cli.command("list-questions")
+@click.argument("rubric_path", type=click.Path(exists=True))
+def list_rubric_questions(rubric_path: str) -> None:
+    """List questions from a rubric file (YAML only)."""
+    from gradescope_autograde.grader.rubric_parser import list_rubric_questions as _lrq
+
+    questions = _lrq(rubric_path)
+    if not questions:
+        _error("No questions found or unsupported format (PDF/LaTeX rubrics not supported for listing).")
+    table = Table(title=f"Questions from: {rubric_path}", show_lines=True)
+    table.add_column("ID", style="cyan")
+    table.add_column("Title", style="green")
+    table.add_column("Max Points", justify="right")
+    table.add_column("Type")
+    for q in questions:
+        table.add_row(
+            q.get("id", "?"),
+            q.get("title", "?")[:40],
+            str(q.get("max_points", "?")),
+            q.get("type", "?"),
+        )
+    console.print(table)
 
 
 @cli.command()

@@ -57,9 +57,9 @@ class ConfigScreen(Screen):
             ),
             Label("AI Model", classes="field-label"),
             ModelSelector(),
-            Label("Questions to Grade (comma-separated, e.g. q1,q3)", classes="field-label"),
+            Label("Questions to Grade (comma-separated IDs, see rubric file)", classes="field-label"),
             Input(
-                placeholder="Leave empty to grade all questions",
+                placeholder='e.g. q1,q4 or leave empty for all',
                 id="question-ids",
             ),
             Horizontal(
