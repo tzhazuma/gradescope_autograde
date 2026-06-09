@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 from openai import OpenAI
 
@@ -84,7 +85,25 @@ class OpenCodeGoProvider(LLMProvider):
             system_prompt=full_system,
             response_format="json",
         )
-        return json.loads(raw)
+        return self._parse_json_response(raw)
+
+    @staticmethod
+    def _parse_json_response(raw: str) -> dict:
+        """Parse JSON from LLM response, handling markdown fences and prefix text."""
+        cleaned = raw.strip()
+        # Strip markdown JSON code fences
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+            cleaned = re.sub(r"\s*```$", "", cleaned)
+        # Try to find the first { ... } block if prefix text exists
+        brace_start = cleaned.find("{")
+        if brace_start > 0:
+            cleaned = cleaned[brace_start:]
+        # Try to find the last } for the JSON boundary
+        brace_end = cleaned.rfind("}")
+        if brace_end > 0:
+            cleaned = cleaned[: brace_end + 1]
+        return json.loads(cleaned)
 
     def list_models(self) -> list[dict]:
         return list(_MODELS)

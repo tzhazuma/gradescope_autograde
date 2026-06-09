@@ -39,14 +39,14 @@ class ConfigScreen(Screen):
                 f"Assignment: {self.assignment_title}  (ID: {self.assignment_id})"
             ),
             Label("Question PDF Path", classes="field-label"),
-            Input(
-                placeholder="data/input/question.pdf",
-                id="question-pdf",
+            Horizontal(
+                Input(placeholder="data/input/question.pdf", id="question-pdf"),
+                Button("Browse", id="browse-pdf", variant="default"),
             ),
             Label("Rubric File Path (.yaml/.yml/.pdf/.tex)", classes="field-label"),
-            Input(
-                placeholder="config/rubrics/default_rubric.yaml",
-                id="rubric-path",
+            Horizontal(
+                Input(placeholder="config/rubrics/default_rubric.yaml", id="rubric-path"),
+                Button("Browse", id="browse-rubric", variant="default"),
             ),
             Label("Extra Grading Instructions (optional)", classes="field-label"),
             TextArea(
@@ -69,6 +69,24 @@ class ConfigScreen(Screen):
             id="main",
         )
         yield Footer()
+
+    def _on_browse_file(self, input_id: str, file_types: list[str] | None = None) -> None:
+        from gradescope_autograde.utils.file_picker import pick_file
+
+        path = pick_file(
+            title="Select a file",
+            file_types=file_types,
+        )
+        if path:
+            self.query_one(f"#{input_id}", Input).value = path
+
+    @on(Button.Pressed, "#browse-pdf")
+    def _browse_pdf(self) -> None:
+        self._on_browse_file("question-pdf", ["pdf"])
+
+    @on(Button.Pressed, "#browse-rubric")
+    def _browse_rubric(self) -> None:
+        self._on_browse_file("rubric-path", ["yaml", "yml", "pdf", "tex"])
 
     @on(Button.Pressed, "#start")
     def _on_start(self) -> None:
