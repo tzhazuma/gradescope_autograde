@@ -31,6 +31,7 @@ class GradingScreen(Screen):
         verbose: bool = False,
         upload: bool = False,
         with_pages: bool = False,
+        extraction: str = "auto",
     ) -> None:
         super().__init__()
         self.course_id = course_id
@@ -45,6 +46,7 @@ class GradingScreen(Screen):
         self._verbose = verbose
         self._upload = upload
         self._with_pages = with_pages
+        self._extraction = extraction
         self._results: dict | None = None
 
     BINDINGS = [

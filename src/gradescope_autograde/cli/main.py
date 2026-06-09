@@ -283,6 +283,7 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @click.option("--dry-run", is_flag=True, help="Grade locally without uploading")
 @click.option("--upload", is_flag=True, help="Upload grades to Gradescope after grading (overrides --dry-run)")
 @click.option("--with-pages", is_flag=True, help="Include [Page N of M] markers for unmapped PDF submissions")
+@click.option("--extraction", type=click.Choice(["auto", "ocr", "multimodal"]), default="auto", help="How to handle scanned/handwritten PDFs: auto (default), ocr, or multimodal (requires mimo-v2.5)")
 @click.option("--provider", default="opencode-go", help="LLM provider name")
 @click.option("--model", default=None, help="Model ID to use")
 @click.option("--questions", "-q", default=None, help="Comma-separated question IDs to grade (e.g. 'q1,q3'). Default: all")
@@ -296,6 +297,7 @@ def grade(
     dry_run: bool,
     upload: bool,
     with_pages: bool,
+    extraction: str,
     provider: str,
     model: str | None,
     questions: str | None,
@@ -365,6 +367,7 @@ def grade(
             verbose=verbose,
             upload=effective_upload,
             with_pages=with_pages,
+            extraction=extraction,
             log_func=lambda msg, v: error_console.print(f"[dim]{msg}[/dim]") if v else None,
         )
         progress.update(task, description="Grading complete!", completed=100)

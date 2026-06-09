@@ -69,7 +69,8 @@ class ConfigScreen(Screen):
                 Static("OFF", id="upload-status"),
                 Button("Pages", id="toggle-pages", variant="default"),
                 Static("OFF", id="pages-status"),
-                id="toggle-row",
+                Button("Extract:Auto", id="toggle-extraction", variant="default"),
+                Static("", id="extraction-status"),
             ),
             Static("", id="config-status"),
             Horizontal(
@@ -122,6 +123,18 @@ class ConfigScreen(Screen):
         self.query_one("#toggle-pages", Button).variant = "primary" if self._with_pages else "default"
         self.query_one("#pages-status", Static).update("   ON" if self._with_pages else "   OFF")
 
+    @on(Button.Pressed, "#toggle-extraction")
+    def _toggle_extraction(self) -> None:
+        modes = ["auto", "ocr", "multimodal"]
+        current = getattr(self, "_extraction", "auto")
+        idx = (modes.index(current) + 1) % len(modes) if current in modes else 0
+        self._extraction = modes[idx]
+        st = self.query_one("#extraction-status", Static)
+        labels = {"auto": "Extract:Auto", "ocr": "Extract:OCR", "multimodal": "Extract:MM"}
+        hints = {"auto": "", "ocr": "txt", "multimodal": "img"}
+        self.query_one("#toggle-extraction", Button).label = labels[self._extraction]
+        st.update(hints[self._extraction])
+
     @on(Button.Pressed, "#start")
     def _on_start(self) -> None:
         question_pdf = self.query_one("#question-pdf", Input).value.strip()
@@ -169,6 +182,7 @@ class ConfigScreen(Screen):
                 verbose=getattr(self, "_verbose", False),
                 upload=getattr(self, "_upload", False),
                 with_pages=getattr(self, "_with_pages", False),
+                extraction=getattr(self, "_extraction", "auto"),
             )
         )
 

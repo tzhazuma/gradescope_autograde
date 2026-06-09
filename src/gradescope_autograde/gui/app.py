@@ -36,6 +36,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                 "verbose": False,
                 "upload": False,
                 "with_pages": False,
+                "extraction": "auto",
                 "courses": [],
                 "assignments": [],
                 "results": [],
@@ -217,6 +218,18 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                     state["with_pages"] = False
                     pages_checkbox.on("change", lambda e: state.update(with_pages=e.args))
 
+                    ui.label("PDF Text Extraction:")
+                    extraction_select = ui.select(
+                        label="Extraction mode",
+                        options={
+                            "auto": "Auto (OCR for text models, images for multimodal)",
+                            "ocr": "OCR only (tesseract, works with all models)",
+                            "multimodal": "Multimodal (send images to LLM, requires mimo-v2.5)",
+                        },
+                        value="auto",
+                        on_change=lambda e: state.update(extraction=e.value),
+                    ).classes("w-full mb-4")
+
                     ui.button("Next", on_click=lambda: stepper.next()).classes("mt-4")
 
                 with ui.step("Grade"):
@@ -290,6 +303,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                                 verbose=state.get("verbose", False),
                                 upload=state.get("upload", False) or None,
                                 with_pages=state.get("with_pages", False),
+                                extraction=state.get("extraction", "auto"),
                             )
 
                             state["results"] = result.get("results", [])

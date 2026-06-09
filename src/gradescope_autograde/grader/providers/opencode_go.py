@@ -126,6 +126,50 @@ class OpenCodeGoProvider(LLMProvider):
             cleaned = cleaned[: brace_end + 1]
         return json.loads(cleaned)
 
+    def complete_multimodal(
+        self,
+        prompt: str,
+        images: list[bytes],
+        system_prompt: str = "",
+        response_format: str | None = None,
+    ) -> str:
+        """Send prompt + images to a multimodal model.
+
+        Args:
+            prompt: Text prompt.
+            images: List of PNG/JPEG image bytes (PDF pages rendered to images).
+            system_prompt: Optional system prompt.
+            response_format: If ``"json"``, request JSON response.
+
+        Returns:
+            LLM response text.
+        """
+        import base64
+
+        messages: list[dict] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
+        content: list[dict] = [{"type": "text", "text": prompt}]
+        for img_bytes in images:
+            b64 = base64.b64encode(img_bytes).decode("utf-8")
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{b64}"},
+            })
+        messages.append({"role": "user", "content": content})
+
+        kwargs: dict = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": 0.1,
+        }
+        if response_format == "json":
+            kwargs["response_format"] = {"type": "json_object"}
+
+        response = self._client.chat.completions.create(**kwargs)
+        return response.choices[0].message.content or ""
+
     def list_models(self) -> list[dict]:
         return list(_MODELS)
 
