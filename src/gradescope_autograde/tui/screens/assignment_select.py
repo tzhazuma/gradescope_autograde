@@ -101,7 +101,7 @@ class AssignmentSelectScreen(Screen):
         assignment_title = ""
         for a in self._assignments:
             if a.get("id") == assignment_id:
-                assignment_title = a.get("title", "")
+                assignment_title = a.get("name") or a.get("title", "")
                 break
 
         from gradescope_autograde.tui.screens.config_screen import ConfigScreen

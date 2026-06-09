@@ -163,7 +163,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                             ui.notify(f"Unsupported rubric format: {suffix}", type="warning")
 
                     ui.upload(
-                        label="Rubric YAML",
+                        label="Rubric File (.yaml / .yml / .pdf / .tex)",
                         on_upload=_on_rubric_upload,
                     ).classes("w-full mb-4")
 

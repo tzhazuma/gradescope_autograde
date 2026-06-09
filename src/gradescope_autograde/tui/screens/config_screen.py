@@ -36,14 +36,14 @@ class ConfigScreen(Screen):
             Label("Grading Configuration", classes="screen-title"),
             Static(
                 f"Course: {self.course_name}\n"
-                f"Assignment: {self.assignment_title}"
+                f"Assignment: {self.assignment_title}  (ID: {self.assignment_id})"
             ),
             Label("Question PDF Path", classes="field-label"),
             Input(
                 placeholder="data/input/question.pdf",
                 id="question-pdf",
             ),
-            Label("Rubric YAML Path", classes="field-label"),
+            Label("Rubric File Path (.yaml/.yml/.pdf/.tex)", classes="field-label"),
             Input(
                 placeholder="config/rubrics/default_rubric.yaml",
                 id="rubric-path",
