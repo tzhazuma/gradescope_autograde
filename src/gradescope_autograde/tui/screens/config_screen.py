@@ -110,13 +110,9 @@ class ConfigScreen(Screen):
 
     def _load_rubric(self, path: str) -> dict | None:
         try:
-            import yaml
+            from gradescope_autograde.grader.rubric_parser import load_rubric as _load_rubric
 
-            rubric_path = Path(path)
-            if not rubric_path.exists():
-                return None
-            with open(rubric_path, "r", encoding="utf-8") as f:
-                return yaml.safe_load(f)
+            return _load_rubric(path)
         except Exception:
             return None
 

@@ -279,7 +279,7 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @cli.command()
 @click.argument("course_id")
 @click.argument("assignment_id")
-@click.option("--rubric", "-r", required=True, type=click.Path(exists=True), help="Path to rubric YAML")
+@click.option("--rubric", "-r", required=True, type=click.Path(exists=True), help="Path to rubric file (.yaml/.yml/.pdf/.tex)")
 @click.option("--dry-run", is_flag=True, help="Grade locally without uploading")
 @click.option("--provider", default="opencode-go", help="LLM provider name")
 @click.option("--model", default=None, help="Model ID to use")
@@ -306,9 +306,9 @@ def grade(
 
     config_path: str = ctx.obj["config_path"]
 
-    rubric_path = Path(rubric)
-    with open(rubric_path, encoding="utf-8") as fh:
-        rubric_data = yaml.safe_load(fh)
+    from gradescope_autograde.grader.rubric_parser import load_rubric as _load_rubric
+
+    rubric_data = _load_rubric(rubric)
 
     session, cfg = _create_session(config_path)
     client = GSClient(session)

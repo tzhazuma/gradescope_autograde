@@ -1,4 +1,4 @@
-"""Rubric YAML loader and parser."""
+"""Rubric loader — supports YAML, PDF, and LaTeX formats."""
 
 from __future__ import annotations
 
@@ -7,26 +7,86 @@ from pathlib import Path
 import yaml
 
 
-def load_rubric(path: str | Path) -> dict:
+def _rubric_from_parsed_questions(questions: list[dict]) -> dict:
+    """Convert parsed question dicts (from PDF/LaTeX) to a rubric dict."""
+    rubric_questions = []
+    for q in questions:
+        qnum = q.get("question_number", 1)
+        rubric_questions.append({
+            "id": f"q{qnum}",
+            "title": q.get("title", f"Question {qnum}"),
+            "max_points": q.get("max_points", 10.0),
+            "type": "short_answer",
+            "text": q.get("text", ""),
+            "reference_answer": q.get("reference_answer", ""),
+            "rubric": [
+                {
+                    "name": "correctness",
+                    "points": q.get("max_points", 10.0),
+                    "description": "Answer is correct and complete",
+                }
+            ],
+        })
+
+    return {
+        "questions": rubric_questions,
+        "grading_guidelines": [
+            "Award partial credit when the student shows understanding but makes minor errors",
+        ],
+    }
+
+
+def load_rubric(path: str | Path, default_points: float = 10.0) -> dict:
+    """Load a rubric from a YAML, PDF, or LaTeX file.
+
+    Supported formats (auto-detected by file extension):
+
+    - ``.yaml`` / ``.yml`` — parsed as YAML directly.
+    - ``.pdf`` — questions extracted via :func:`parse_reference_pdf`.
+    - ``.tex`` — questions extracted via :func:`parse_reference_tex`.
+
+    Args:
+        path: Path to the rubric file.
+        default_points: Default max points per question when parsing
+            PDF or LaTeX (ignored for YAML).
+
+    Returns:
+        A rubric dict with at least a ``"questions"`` key.
+    """
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"Rubric file not found: {p}")
-    if p.suffix not in (".yaml", ".yml"):
-        raise ValueError(f"Expected .yaml or .yml file, got: {p.suffix}")
 
-    with p.open() as f:
-        rubric = yaml.safe_load(f)
+    suffix = p.suffix.lower()
 
-    if not isinstance(rubric, dict):
-        raise ValueError("Rubric must be a YAML mapping (dict)")
+    if suffix in (".yaml", ".yml"):
+        with p.open() as f:
+            rubric = yaml.safe_load(f)
 
-    if "questions" not in rubric:
-        raise ValueError("Rubric must contain a 'questions' key")
+        if not isinstance(rubric, dict):
+            raise ValueError("Rubric must be a YAML mapping (dict)")
+        if "questions" not in rubric:
+            raise ValueError("Rubric must contain a 'questions' key")
+        if not isinstance(rubric["questions"], list):
+            raise ValueError("'questions' must be a list")
+        return rubric
 
-    if not isinstance(rubric["questions"], list):
-        raise ValueError("'questions' must be a list")
+    if suffix == ".pdf":
+        from gradescope_autograde.grader.pdf_parser import parse_reference_pdf
 
-    return rubric
+        questions = parse_reference_pdf(str(p))
+        return _rubric_from_parsed_questions(questions)
+
+    if suffix == ".tex":
+        from gradescope_autograde.grader.latex_parser import parse_reference_tex
+
+        questions = parse_reference_tex(str(p))
+        return _rubric_from_parsed_questions(questions)
+
+    raise ValueError(
+        f"Unsupported rubric format: {suffix}. "
+        f"Expected .yaml, .yml, .pdf, or .tex"
+    )
 
 
 def parse_questions(rubric: dict) -> list[dict]:

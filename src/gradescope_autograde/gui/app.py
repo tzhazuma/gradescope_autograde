@@ -144,9 +144,23 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                     ).classes("w-full mb-4")
 
                     def _on_rubric_upload(e):
-                        import yaml
-                        state["rubric_yaml"] = e.content
-                        state["rubric_data"] = yaml.safe_load(e.content.decode("utf-8"))
+                        import tempfile
+                        from pathlib import Path
+                        from gradescope_autograde.grader.rubric_parser import load_rubric
+
+                        suffix = Path(e.name).suffix.lower()
+                        if suffix in (".yaml", ".yml"):
+                            import yaml
+                            state["rubric_yaml"] = e.content
+                            state["rubric_data"] = yaml.safe_load(e.content.decode("utf-8"))
+                        elif suffix in (".pdf", ".tex"):
+                            tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+                            tmp.write(e.content)
+                            tmp.close()
+                            state["rubric_data"] = load_rubric(tmp.name)
+                            Path(tmp.name).unlink(missing_ok=True)
+                        else:
+                            ui.notify(f"Unsupported rubric format: {suffix}", type="warning")
 
                     ui.upload(
                         label="Rubric YAML",
