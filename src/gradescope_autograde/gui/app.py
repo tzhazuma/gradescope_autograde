@@ -172,6 +172,11 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         placeholder="Add any special grading instructions here..."
                     ).classes("w-full mb-4")
 
+                    ui.label("Questions (comma-separated IDs, e.g. q1,q3):")
+                    question_ids_input = ui.input(
+                        placeholder="Leave empty to grade all questions"
+                    ).classes("w-full mb-4")
+
                     ui.label("AI Model:")
                     with ui.row():
                         ui.select(
@@ -259,11 +264,14 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                             )
                             progress.value = 0.1
 
+                            q_ids_raw = question_ids_input.value.strip()
+                            q_ids = [x.strip() for x in q_ids_raw.split(",") if x.strip()] if q_ids_raw else None
                             result = pipeline_obj.run(
                                 state["course_id"],
                                 state["assignment_id"],
                                 rubric,
                                 dry_run=True,
+                                question_ids=q_ids,
                             )
 
                             state["results"] = result.get("results", [])

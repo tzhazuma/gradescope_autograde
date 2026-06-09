@@ -46,6 +46,7 @@ class Pipeline:
         assignment_id: str,
         rubric: dict,
         dry_run: bool = False,
+        question_ids: list[str] | None = None,
     ) -> dict:
         """Run the full grading pipeline.
 
@@ -56,6 +57,8 @@ class Pipeline:
                 question dicts (each with ``id``, ``title``, ``max_points``,
                 ``type``, ``rubric``, and optional ``extra_instructions``).
             dry_run: If ``True``, grade locally but do NOT submit to Gradescope.
+            question_ids: Optional list of question IDs to grade (e.g. ``["q1",
+                "q3"]``). When ``None`` (default), all questions are graded.
 
         Returns:
             Summary dict with keys ``summary``, ``review_count``, and ``results``.
@@ -77,9 +80,11 @@ class Pipeline:
                 # Extract text from content (handles PDF and plain text)
                 answer_text = self._extract_answer(content)
 
-                # Grade each question
                 question_results: list[dict] = []
-                for question in rubric.get("questions", []):
+                all_qs = rubric.get("questions", [])
+                if question_ids:
+                    all_qs = [q for q in all_qs if q.get("id") in question_ids]
+                for question in all_qs:
                     extra = question.get("extra_instructions", "")
                     result = self.engine.grade(question, answer_text, extra)
                     result["student_name"] = student_name

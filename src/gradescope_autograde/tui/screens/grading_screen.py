@@ -27,6 +27,7 @@ class GradingScreen(Screen):
         extra_instructions: str,
         provider_name: str,
         model_id: str,
+        question_ids: list[str] | None = None,
     ) -> None:
         super().__init__()
         self.course_id = course_id
@@ -37,6 +38,7 @@ class GradingScreen(Screen):
         self.extra_instructions = extra_instructions
         self.provider_name = provider_name
         self.model_id = model_id
+        self._question_ids = question_ids
         self._results: dict | None = None
 
     BINDINGS = [
@@ -113,7 +115,11 @@ class GradingScreen(Screen):
                     )
                     answer_text = self._extract_answer(content)
 
-                    questions = self.rubric_data.get("questions", [])
+                    all_qs = self.rubric_data.get("questions", [])
+                    questions = (
+                        [q for q in all_qs if q.get("id") in self._question_ids]
+                        if self._question_ids else all_qs
+                    )
                     for question in questions:
                         result = engine.grade(
                             question=question,

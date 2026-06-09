@@ -283,6 +283,7 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @click.option("--dry-run", is_flag=True, help="Grade locally without uploading")
 @click.option("--provider", default="opencode-go", help="LLM provider name")
 @click.option("--model", default=None, help="Model ID to use")
+@click.option("--questions", "-q", default=None, help="Comma-separated question IDs to grade (e.g. 'q1,q3'). Default: all")
 @click.pass_context
 def grade(
     ctx: click.Context,
@@ -292,6 +293,7 @@ def grade(
     dry_run: bool,
     provider: str,
     model: str | None,
+    questions: str | None,
 ) -> None:
     from gradescope_autograde.client.client import GSClient
     from gradescope_autograde.grader.engine import GradingEngine
@@ -336,11 +338,13 @@ def grade(
         transient=False,
     ) as progress:
         task = progress.add_task("Grading submissions...", total=None)
+        q_ids = questions.split(",") if questions else None
         result = pipeline.run(
             course_id=course_id,
             assignment_id=assignment_id,
             rubric=rubric_data,
             dry_run=dry_run,
+            question_ids=q_ids,
         )
         progress.update(task, description="Grading complete!", completed=100)
 

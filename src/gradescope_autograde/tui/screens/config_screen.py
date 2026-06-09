@@ -55,6 +55,11 @@ class ConfigScreen(Screen):
             ),
             Label("AI Model", classes="field-label"),
             ModelSelector(),
+            Label("Questions to Grade (comma-separated, e.g. q1,q3)", classes="field-label"),
+            Input(
+                placeholder="Leave empty to grade all questions",
+                id="question-ids",
+            ),
             Static("", id="config-status"),
             Horizontal(
                 Button("Back", id="back", variant="default"),
@@ -93,6 +98,9 @@ class ConfigScreen(Screen):
             status.update(f"[error]Could not load rubric from: {rubric_path}[/]")
             return
 
+        q_ids_raw = self.query_one("#question-ids", Input).value.strip()
+        question_ids = [x.strip() for x in q_ids_raw.split(",") if x.strip()] if q_ids_raw else None
+
         from gradescope_autograde.tui.screens.grading_screen import GradingScreen
 
         self.app.push_screen(
@@ -105,6 +113,7 @@ class ConfigScreen(Screen):
                 extra_instructions=extra_instructions,
                 provider_name=provider_name,
                 model_id=model_id,
+                question_ids=question_ids,
             )
         )
 
