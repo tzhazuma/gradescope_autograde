@@ -176,7 +176,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         placeholder="Add any special grading instructions here..."
                     ).classes("w-full mb-4")
 
-                    ui.label("Questions (comma-separated IDs, e.g. q1,q3):")
+                    ui.label("Questions (comma-separated IDs from rubric, e.g. q1,q4):")
                     question_ids_input = ui.input(
                         placeholder="Leave empty to grade all questions"
                     ).classes("w-full mb-4")
