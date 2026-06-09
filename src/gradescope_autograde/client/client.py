@@ -133,6 +133,30 @@ class GSClient:
         pdf_resp.raise_for_status()
         return pdf_resp.content
 
+    def _get_csrf_and_save_url(
+        self, course_id: str, question_id: str, submission_id: str
+    ) -> tuple[str, str, str]:
+        """Fetch grading context to extract CSRF token and save_grade URL.
+
+        Returns ``(csrf_token, save_url, base_url)``.
+        Raises ``ValueError`` if the page is inaccessible.
+        """
+        import json
+        from bs4 import BeautifulSoup
+
+        url = f"/courses/{course_id}/questions/{question_id}/submissions/{submission_id}/grade"
+        resp = self._session.get(url)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        csrf_meta = soup.find("meta", {"name": "csrf-token"})
+        csrf_token = csrf_meta.get("content", "") if csrf_meta else ""
+        grader = soup.find(attrs={"data-react-class": "SubmissionGrader"})
+        if grader:
+            props = json.loads(grader.get("data-react-props", "{}"))
+            save_url = props.get("urls", {}).get("save_grade", "")
+        else:
+            save_url = ""
+        return         csrf_token, save_url, self._session.base_url if hasattr(self._session, 'base_url') else "https://www.gradescope.com"
+
     def submit_grade(
         self,
         course_id: str,
@@ -142,15 +166,55 @@ class GSClient:
         score: float,
         feedback: str = "",
     ) -> bool:
-        """POST grade for a specific question. Returns True on success."""
+        """POST grade for a specific question. Returns True on success.
+
+        Uses the Gradescope React grading endpoint:
+        ``/courses/{cid}/questions/{qid}/submissions/{qsid}/grade``
+        with CSRF token extracted from the page.
+        """
+        import json
+
         self._limiter.wait()
-        resp = self._session.post(
-            f"/courses/{course_id}/assignments/{assignment_id}"
-            f"/submissions/{submission_id}/grade",
-            data={
-                "question_id": question_id,
-                "score": str(score),
-                "feedback": feedback,
-            },
-        )
-        return resp.status_code == 200
+        try:
+            csrf, save_url, base_url = self._get_csrf_and_save_url(
+                course_id, question_id, submission_id
+            )
+        except Exception:
+            # Fallback: try old /assignments/{aid}/submissions/{sid}/grade endpoint
+            self._limiter.wait()
+            resp = self._session.post(
+                f"/courses/{course_id}/assignments/{assignment_id}"
+                f"/submissions/{submission_id}/grade",
+                data={
+                    "question_id": question_id,
+                    "score": str(score),
+                    "feedback": feedback,
+                },
+            )
+            return resp.status_code == 200
+
+        if not save_url or not csrf:
+            return False
+
+        payload = {
+            "question_submission_evaluation": {
+                "points": score,
+                "comments": feedback or "",
+            }
+        }
+        headers = {
+            "X-CSRF-Token": csrf,
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+        try:
+            self._limiter.wait()
+            resp = self._session._session.post(
+                f"{base_url}{save_url}",
+                json=payload,
+                headers=headers,
+            )
+            return resp.status_code == 200
+        except Exception:
+            return False
