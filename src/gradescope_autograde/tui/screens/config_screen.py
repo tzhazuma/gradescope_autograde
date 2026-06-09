@@ -63,12 +63,13 @@ class ConfigScreen(Screen):
                 id="question-ids",
             ),
             Horizontal(
-                Button("Verbose Mode", id="toggle-verbose", variant="default"),
-                Static("   OFF", id="verbose-status"),
+                Button("Verbose", id="toggle-verbose", variant="default"),
+                Static("OFF", id="verbose-status"),
                 Button("Upload", id="toggle-upload", variant="default"),
-                Static("   OFF", id="upload-status"),
-                Button("Page Markers", id="toggle-pages", variant="default"),
-                Static("   OFF", id="pages-status"),
+                Static("OFF", id="upload-status"),
+                Button("Pages", id="toggle-pages", variant="default"),
+                Static("OFF", id="pages-status"),
+                id="toggle-row",
             ),
             Static("", id="config-status"),
             Horizontal(

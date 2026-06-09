@@ -58,8 +58,12 @@ class GradescopeTUI(App):
     ProgressBar {
         margin: 1 0;
     }
-    Input, TextArea {
+    Input {
         margin: 0 0 1 0;
+    }
+    TextArea {
+        margin: 0 0 1 0;
+        height: 5;
     }
     .path-row {
         height: auto;
@@ -71,6 +75,20 @@ class GradescopeTUI(App):
     .path-row Button {
         width: auto;
         min-width: 10;
+    }
+    #toggle-row {
+        height: auto;
+        margin-bottom: 1;
+        align: left middle;
+    }
+    #toggle-row Button {
+        width: auto;
+        min-width: 8;
+        margin: 0 1 0 0;
+    }
+    #toggle-row Static {
+        width: auto;
+        margin: 0 2 0 0;
     }
     .field-label {
         text-style: bold;
