@@ -121,21 +121,100 @@ class GradingScreen(Screen):
                     content = client.get_submission_content(
                         self.course_id, self.assignment_id, sub_id
                     )
-                    if self._verbose:
-                        log_msg(f"  PDF: {len(content)} bytes")
-                    answer_text = self._extract_answer(content, with_pages=self._with_pages)
-                    if self._verbose:
-                        log_msg(f"  Extracted {len(answer_text)} chars of text")
+                    if len(content) < 100:
+                        log_msg(f"  [error] PDF too small: {len(content)} bytes, skipping[/]")
+                        results_list.append({
+                            "submission_id": sub_id,
+                            "student_name": student,
+                            "question_id": "error",
+                            "score": 0,
+                            "confidence": 0,
+                            "feedback": f"PDF content unreachable ({len(content)} bytes)",
+                            "flags": ["needs_review", "content_error"],
+                        })
+                        update_progress(i + 1, total)
+                        continue
+
+                    log_msg(f"  PDF: {len(content)} bytes, mode={self._extraction}")
 
                     all_qs = self.rubric_data.get("questions", [])
                     questions = (
                         [q for q in all_qs if q.get("id") in self._question_ids]
                         if self._question_ids else all_qs
                     )
+
+                    # --- MULTIMODAL PATH ---
+                    if self._extraction in ("multimodal", "auto"):
+                        import io
+                        import pymupdf
+                        from PIL import Image
+
+                        try:
+                            doc_mm = pymupdf.open(stream=content, filetype="pdf")
+                            mm_images = []
+                            for page in doc_mm:
+                                pix = page.get_pixmap(dpi=150)
+                                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                                buf = io.BytesIO()
+                                img.save(buf, format="PNG")
+                                mm_images.append(buf.getvalue())
+                            doc_mm.close()
+                            log_msg(f"  Rendered {len(mm_images)} page image(s) for multimodal LLM")
+
+                            for question in questions:
+                                qid = question.get("id", "?")
+                                log_msg(f"  Calling multimodal LLM for {qid}...")
+                                extra = question.get("extra_instructions", "")
+                                prompt = self._build_mm_prompt(question, extra)
+                                raw = provider.complete_multimodal(
+                                    prompt=prompt,
+                                    images=mm_images,
+                                    response_format="json",
+                                )
+                                import json as _json
+                                try:
+                                    parsed = _json.loads(raw) if isinstance(raw, str) else raw
+                                except Exception:
+                                    parsed = {"score": 0, "confidence": 0, "feedback": f"Parse error", "flags": ["needs_review"]}
+                                result = {
+                                    "question_id": qid,
+                                    "score": float(parsed.get("score", 0)),
+                                    "confidence": float(parsed.get("confidence", 0)),
+                                    "feedback": parsed.get("feedback", ""),
+                                    "flags": parsed.get("flags", []),
+                                    "student_name": student,
+                                    "submission_id": sub_id,
+                                }
+                                log_msg(f"  → {qid}: {result['score']}/{question.get('max_points', '?')} (conf={result['confidence']:.0%})")
+                                review_queue.check(sub_id, result)
+                                results_list.append(result)
+                            update_progress(i + 1, total)
+                            continue
+                        except Exception as e:
+                            log_msg(f"  [warn] Multimodal failed: {e}, falling back to text[/]")
+
+                    # --- TEXT/OCR PATH ---
+                    answer_text = self._extract_answer(content, with_pages=self._with_pages)
+                    word_count = len(answer_text.split())
+                    log_msg(f"  Extracted {len(answer_text)} chars, ~{word_count} words")
+
+                    if word_count < 3:
+                        log_msg(f"  [error] No text extracted, skipping submission[/]")
+                        results_list.append({
+                            "submission_id": sub_id,
+                            "student_name": student,
+                            "question_id": "error",
+                            "score": 0,
+                            "confidence": 0,
+                            "feedback": "No extractable text from PDF (scanned handwriting — try multimodal or OCR mode)",
+                            "flags": ["needs_review", "extraction_error"],
+                        })
+                        update_progress(i + 1, total)
+                        continue
+
                     for question in questions:
                         qid = question.get("id", "?")
-                        if self._verbose:
-                            log_msg(f"  Calling LLM for {qid}...")
+                        log_msg(f"  Calling LLM for {qid}...")
                         result = engine.grade(
                             question=question,
                             student_answer=answer_text,
@@ -223,6 +302,31 @@ class GradingScreen(Screen):
 
         except Exception as exc:
             log_msg(f"[error]Pipeline failed: {exc}[/]")
+
+    @staticmethod
+    def _build_mm_prompt(question: dict, extra_instructions: str = "") -> str:
+        qid = question.get("id", "?")
+        title = question.get("title", f"Question {qid}")
+        max_pts = question.get("max_points", 10)
+        rubric_text = "\n".join(
+            f"  - {c.get('name', c.get('criterion', ''))}: {c.get('points', 0)} pts"
+            for c in question.get("rubric", [])
+        )
+        prompt = (
+            f"GRADING TASK\n\n"
+            f"Question: {title} ({max_pts} points max)\n\n"
+            f"RUBRIC:\n{rubric_text}\n\n"
+            f"The student's handwritten answer is shown in the image(s). "
+            f"Evaluate it against the rubric.\n\n"
+        )
+        if extra_instructions:
+            prompt += f"ADDITIONAL INSTRUCTIONS:\n{extra_instructions}\n\n"
+        prompt += (
+            f"Output JSON: "
+            f'{{"score": <total points>, "confidence": 0.0-1.0, '
+            f'"feedback": "<brief>", "flags": []}}'
+        )
+        return prompt
 
     def _create_session(self):
         from gradescope_autograde.config import load_config
