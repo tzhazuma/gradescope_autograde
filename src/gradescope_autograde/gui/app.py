@@ -171,6 +171,17 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         on_upload=_on_rubric_upload,
                     ).classes("w-full mb-4")
 
+                    def _show_rubric_questions():
+                        rd = state.get("rubric_data", {})
+                        qs = rd.get("questions", [])
+                        if not qs:
+                            ui.notify("No questions — upload a rubric first", type="warning")
+                            return
+                        msg = "\n".join(f"• {q.get('id', '?')}: {q.get('title', '?')} ({q.get('max_points', '?')} pts)" for q in qs)
+                        ui.notify(msg, type="info", multi_line=True, close_button=True)
+
+                    ui.button("Show Questions from Rubric", on_click=_show_rubric_questions).classes("mb-4")
+
                     ui.label("Extra Grading Instructions:")
                     extra_instructions = ui.textarea(
                         placeholder="Add any special grading instructions here..."
@@ -241,6 +252,8 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                     )
                     log_output = ui.log().classes("w-full h-64")
 
+                    import asyncio as _asyncio
+
                     async def run_grading() -> None:
                         progress.value = 0
                         log_output.push("Starting grading pipeline...")
@@ -294,17 +307,20 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
 
                             q_ids_raw = question_ids_input.value.strip()
                             q_ids = [x.strip() for x in q_ids_raw.split(",") if x.strip()] if q_ids_raw else None
-                            result = pipeline_obj.run(
-                                state["course_id"],
-                                state["assignment_id"],
-                                rubric,
-                                dry_run=not state.get("upload", False),
-                                question_ids=q_ids,
-                                verbose=state.get("verbose", False),
-                                upload=state.get("upload", False) or None,
-                                with_pages=state.get("with_pages", False),
-                                extraction=state.get("extraction", "auto"),
-                            )
+                            # Run pipeline in thread to avoid blocking NiceGUI event loop
+                            def _run():
+                                return pipeline_obj.run(
+                                    state["course_id"],
+                                    state["assignment_id"],
+                                    rubric,
+                                    dry_run=not state.get("upload", False),
+                                    question_ids=q_ids,
+                                    verbose=state.get("verbose", False),
+                                    upload=state.get("upload", False) or None,
+                                    with_pages=state.get("with_pages", False),
+                                    extraction=state.get("extraction", "auto"),
+                                )
+                            result = await _asyncio.get_event_loop().run_in_executor(None, _run)
 
                             state["results"] = result.get("results", [])
                             progress.value = 1.0

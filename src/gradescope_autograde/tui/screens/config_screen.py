@@ -50,6 +50,7 @@ class ConfigScreen(Screen):
                 Button("Browse...", id="browse-rubric", variant="default"),
                 classes="path-row",
             ),
+            Button("Show Questions from Rubric", id="show-questions", variant="default"),
             Label("Extra Grading Instructions (optional)", classes="field-label"),
             TextArea(
                 text="",
@@ -109,6 +110,24 @@ class ConfigScreen(Screen):
         btn.variant = "primary" if val else "default"
         btn.label = label_on if val else label_off
         return val
+
+    @on(Button.Pressed, "#show-questions")
+    def _show_questions(self) -> None:
+        rubric_path = self.query_one("#rubric-path", Input).value.strip()
+        if not rubric_path:
+            self.query_one("#config-status", Static).update("[warn]Enter a rubric path first[/]")
+            return
+        try:
+            from gradescope_autograde.grader.rubric_parser import load_rubric, parse_questions
+
+            rubric = load_rubric(rubric_path)
+            questions = parse_questions(rubric)
+            lines = ["Available questions:", f"{'ID':>6s}  {'Title':30s}  {'Points':>6s}"]
+            for q in questions:
+                lines.append(f"{q['id']:>6s}  {q['title']:30s}  {q['max_points']:>6.0f}")
+            self.query_one("#config-status", Static).update("\n".join(lines))
+        except Exception as e:
+            self.query_one("#config-status", Static).update(f"[error]Error: {e}[/]")
 
     @on(Button.Pressed, "#toggle-verbose")
     def _toggle_verbose(self) -> None:
