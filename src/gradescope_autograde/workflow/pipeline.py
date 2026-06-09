@@ -47,6 +47,7 @@ class Pipeline:
         rubric: dict,
         dry_run: bool = False,
         question_ids: list[str] | None = None,
+        verbose: bool = False,
     ) -> dict:
         """Run the full grading pipeline.
 
@@ -59,6 +60,7 @@ class Pipeline:
             dry_run: If ``True``, grade locally but do NOT submit to Gradescope.
             question_ids: Optional list of question IDs to grade (e.g. ``["q1",
                 "q3"]``). When ``None`` (default), all questions are graded.
+            verbose: If ``True``, include full traceback in error feedback.
 
         Returns:
             Summary dict with keys ``summary``, ``review_count``, and ``results``.
@@ -111,6 +113,10 @@ class Pipeline:
 
             except Exception as e:
                 self._progress["failed"] += 1
+                msg = f"Pipeline error: {e}"
+                if verbose:
+                    import traceback
+                    msg = f"Pipeline error:\n{traceback.format_exc()}"
                 results.append(
                     {
                         "submission_id": sub.get("id", str(i)),
@@ -118,7 +124,7 @@ class Pipeline:
                         "question_id": "error",
                         "score": 0,
                         "confidence": 0,
-                        "feedback": f"Pipeline error: {e}",
+                        "feedback": msg,
                         "flags": ["needs_review", "pipeline_error"],
                     }
                 )

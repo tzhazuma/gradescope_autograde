@@ -28,6 +28,7 @@ class GradingScreen(Screen):
         provider_name: str,
         model_id: str,
         question_ids: list[str] | None = None,
+        verbose: bool = False,
     ) -> None:
         super().__init__()
         self.course_id = course_id
@@ -39,6 +40,7 @@ class GradingScreen(Screen):
         self.provider_name = provider_name
         self.model_id = model_id
         self._question_ids = question_ids
+        self._verbose = verbose
         self._results: dict | None = None
 
     BINDINGS = [
@@ -142,14 +144,18 @@ class GradingScreen(Screen):
                     update_progress(i + 1, total)
 
                 except Exception as exc:
-                    log_msg(f"  [error]Error grading {student}: {exc}[/]")
+                    err_msg = f"Error grading {student}: {exc}"
+                    if self._verbose:
+                        import traceback
+                        err_msg = f"Error grading {student}:\n{traceback.format_exc()}"
+                    log_msg(f"  [error]{err_msg}[/]")
                     results_list.append({
                         "submission_id": sub_id,
                         "student_name": student,
                         "question_id": "error",
                         "score": 0,
                         "confidence": 0,
-                        "feedback": f"Error: {exc}",
+                        "feedback": err_msg,
                         "flags": ["needs_review"],
                     })
                     update_progress(i + 1, total)

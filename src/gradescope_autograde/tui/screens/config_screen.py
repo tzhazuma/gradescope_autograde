@@ -41,12 +41,14 @@ class ConfigScreen(Screen):
             Label("Question PDF Path", classes="field-label"),
             Horizontal(
                 Input(placeholder="data/input/question.pdf", id="question-pdf"),
-                Button("Browse", id="browse-pdf", variant="default"),
+                Button("Browse...", id="browse-pdf", variant="default"),
+                classes="path-row",
             ),
             Label("Rubric File Path (.yaml/.yml/.pdf/.tex)", classes="field-label"),
             Horizontal(
                 Input(placeholder="config/rubrics/default_rubric.yaml", id="rubric-path"),
-                Button("Browse", id="browse-rubric", variant="default"),
+                Button("Browse...", id="browse-rubric", variant="default"),
+                classes="path-row",
             ),
             Label("Extra Grading Instructions (optional)", classes="field-label"),
             TextArea(
@@ -59,6 +61,10 @@ class ConfigScreen(Screen):
             Input(
                 placeholder="Leave empty to grade all questions",
                 id="question-ids",
+            ),
+            Horizontal(
+                Button("Verbose Mode", id="toggle-verbose", variant="default"),
+                Static("   OFF", id="verbose-status"),
             ),
             Static("", id="config-status"),
             Horizontal(
@@ -87,6 +93,12 @@ class ConfigScreen(Screen):
     @on(Button.Pressed, "#browse-rubric")
     def _browse_rubric(self) -> None:
         self._on_browse_file("rubric-path", ["yaml", "yml", "pdf", "tex"])
+
+    @on(Button.Pressed, "#toggle-verbose")
+    def _toggle_verbose(self) -> None:
+        self._verbose = not getattr(self, "_verbose", False)
+        self.query_one("#toggle-verbose", Button).variant = "primary" if self._verbose else "default"
+        self.query_one("#verbose-status", Static).update("   ON" if self._verbose else "   OFF")
 
     @on(Button.Pressed, "#start")
     def _on_start(self) -> None:
@@ -132,6 +144,7 @@ class ConfigScreen(Screen):
                 provider_name=provider_name,
                 model_id=model_id,
                 question_ids=question_ids,
+                verbose=getattr(self, "_verbose", False),
             )
         )
 

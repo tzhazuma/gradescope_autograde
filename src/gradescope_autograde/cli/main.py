@@ -284,6 +284,7 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @click.option("--provider", default="opencode-go", help="LLM provider name")
 @click.option("--model", default=None, help="Model ID to use")
 @click.option("--questions", "-q", default=None, help="Comma-separated question IDs to grade (e.g. 'q1,q3'). Default: all")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed error messages")
 @click.pass_context
 def grade(
     ctx: click.Context,
@@ -294,6 +295,7 @@ def grade(
     provider: str,
     model: str | None,
     questions: str | None,
+    verbose: bool,
 ) -> None:
     from gradescope_autograde.client.client import GSClient
     from gradescope_autograde.grader.engine import GradingEngine
@@ -345,6 +347,7 @@ def grade(
             rubric=rubric_data,
             dry_run=dry_run,
             question_ids=q_ids,
+            verbose=verbose,
         )
         progress.update(task, description="Grading complete!", completed=100)
 

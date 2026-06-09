@@ -60,6 +60,17 @@ class GradescopeTUI(App):
     Input, TextArea {
         margin: 0 0 1 0;
     }
+    .path-row {
+        height: auto;
+        margin-bottom: 1;
+    }
+    .path-row Input {
+        width: 1fr;
+    }
+    .path-row Button {
+        width: auto;
+        min-width: 10;
+    }
     .field-label {
         text-style: bold;
         color: $accent;

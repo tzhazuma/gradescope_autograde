@@ -33,6 +33,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                 "password": "",
                 "logged_in": False,
                 "session": None,
+                "verbose": False,
                 "courses": [],
                 "assignments": [],
                 "results": [],
@@ -202,6 +203,10 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                             ),
                         )
 
+                    verbose_checkbox = ui.checkbox("Verbose errors (show full traceback)")
+                    state["verbose"] = False
+                    verbose_checkbox.on("change", lambda e: state.update(verbose=e.args))
+
                     ui.button("Next", on_click=lambda: stepper.next()).classes("mt-4")
 
                 with ui.step("Grade"):
@@ -272,6 +277,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                                 rubric,
                                 dry_run=True,
                                 question_ids=q_ids,
+                                verbose=state.get("verbose", False),
                             )
 
                             state["results"] = result.get("results", [])
