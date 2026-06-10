@@ -1,8 +1,22 @@
+"""LLM-based grading engine with configurable prompts."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from .providers.base import LLMProvider
+
+
+PROMPT_DIR = Path(__file__).parent.parent.parent.parent / "prompts"
+
+
+def _load_prompt(name: str, default: str) -> str:
+    """Load a prompt from ``prompts/<name>.txt``, falling back to *default*."""
+    p = PROMPT_DIR / f"{name}.txt"
+    if p.exists():
+        return p.read_text(encoding="utf-8").strip()
+    return default
 
 
 @dataclass
@@ -28,18 +42,17 @@ class GradingEngine:
     ) -> dict:
         prompt = self._build_prompt(question, student_answer, extra_instructions)
         system_prompt = self._build_system_prompt()
-
         raw = self.provider.complete_structured(prompt, system_prompt=system_prompt)
         return self._parse_result(raw, question)
 
     def _build_system_prompt(self) -> str:
-        return (
+        return _load_prompt("grading_system", (
             "You are an expert grader evaluating student answers. "
             "You are precise, fair, and consistent.\n"
             "Always award partial credit when the student shows understanding "
             "but makes minor errors.\n"
             "Output ONLY valid JSON matching the requested schema."
-        )
+        ))
 
     def _build_prompt(
         self,

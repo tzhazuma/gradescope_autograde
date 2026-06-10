@@ -377,22 +377,23 @@ class Pipeline:
             f"  - {c.get('name', c.get('criterion', ''))}: {c.get('points', 0)} pts"
             for c in question.get("rubric", [])
         )
-        prompt = (
-            f"GRADING TASK\n\n"
-            f"Question: {title} ({max_pts} points max)\n\n"
-            f"RUBRIC:\n{rubric_text}\n\n"
-            f"The student's answer is shown in the image(s) above. "
-            f"Evaluate the student's handwritten answer against the rubric.\n\n"
+        # Try loading multimodal prompt from file, fall back to default
+        from pathlib import Path as _P
+        prompt_file = _P(__file__).parent.parent.parent.parent / "prompts" / "grading_multimodal.txt"
+        if prompt_file.exists():
+            template = prompt_file.read_text(encoding="utf-8")
+        else:
+            template = (
+                "GRADING TASK\n\n"
+                "Question: {title} ({max_pts} points max)\n\n"
+                "RUBRIC:\n{rubric_text}\n\n"
+                "The student's handwritten answer is shown in the image(s). Evaluate it against the rubric.\n\n"
+                "{extra}\n"
+                "Output JSON: "
+                '{{"score": <total points>, "confidence": 0.0-1.0, '
+                '"feedback": "<brief>", "flags": []}}'
+            )
+        extra = f"ADDITIONAL INSTRUCTIONS:\n{extra_instructions}" if extra_instructions else ""
+        return template.format(
+            title=title, max_pts=max_pts, rubric_text=rubric_text, extra=extra,
         )
-        if extra_instructions:
-            prompt += f"ADDITIONAL INSTRUCTIONS:\n{extra_instructions}\n\n"
-        prompt += (
-            f"Output JSON:\n"
-            f"{{\n"
-            f'  "score": <total points awarded>,\n'
-            f'  "confidence": <0.0-1.0>,\n'
-            f'  "feedback": "<brief feedback>",\n'
-            f'  "flags": []\n'
-            f"}}"
-        )
-        return prompt
