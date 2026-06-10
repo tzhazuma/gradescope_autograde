@@ -2,127 +2,99 @@ questions:
 - id: q1
   max_points: 15
   rubric:
-  - description: "Correctly translates the English statement into the first-order\
-      \ logic formula \u2203x(Drinks(x) \u2192 \u2200y Drinks(y)). Must use appropriate\
-      \ quantifiers and predicate."
-    name: Translation
-    points: 3
-  - description: "Presents a clear proof by cases based on the truth of \u2200y Drinks(y).\
-      \ Shows understanding that validity requires the formula to be true in all non-empty\
-      \ domains."
-    name: Validity Proof Structure
-    points: 4
-  - description: "Correctly handles the case where everyone drinks (\xAC\u2203x \xAC\
-      Drinks(x) or \u2200y Drinks(y)). Explains why the implication holds for any\
-      \ chosen person."
-    name: Case 1 Analysis
-    points: 4
-  - description: "Correctly handles the case where not everyone drinks (\u2203x \xAC\
-      Drinks(x)). Identifies a specific person who does not drink and shows the implication\
-      \ is vacuously true for that person."
-    name: Case 2 Analysis
-    points: 4
+  - description: "Correctly translates 'There is a person such that if he drinks,\
+      \ everyone drinks' into \u2203x(Drinks(x) \u2192 \u2200y Drinks(y))"
+    name: Translation into first-order logic
+    points: 5
+  - description: 'Considers both cases: everyone drinks, and not everyone drinks'
+    name: Case analysis
+    points: 5
+  - description: Correctly argues that in each case the implication holds, showing
+      validity
+    name: Logical reasoning
+    points: 5
   title: Question 1
   type: short_answer
 - id: q2
   max_points: 15
   rubric:
-  - description: "Correctly states the negated formula \xAC\u2203x(Drinks(x) \u2192\
-      \ \u2200y Drinks(y))."
-    name: Formula Negation
-    points: 2
-  - description: 'Systematically applies tableau rules: handles negation of existential,
-      universal instantiation, negation of implication, and existential instantiation.
-      Introduces new constants correctly.'
-    name: Tableau Construction Steps
-    points: 8
-  - description: "Identifies the complementary literals (e.g., Drinks(a\u2082) and\
-      \ \xACDrinks(a\u2082)) causing branch closure. Concludes that the unsatisfiability\
-      \ of the negation proves the original formula's validity."
-    name: Closure and Conclusion
-    points: 5
+  - description: Begins with negation of formula and applies duality rules correctly
+    name: Starting the tableau
+    points: 3
+  - description: Correctly applies rules for negated implication, existential instantiation,
+      and universal instantiation
+    name: Application of propositional rules
+    points: 6
+  - description: Introduces fresh constants appropriately for existential and universal
+      quantifiers
+    name: Handling of constants
+    points: 3
+  - description: "Correctly identifies contradiction (D(a2) and \xACD(a2)) and closes\
+      \ the branch"
+    name: Branch closure
+    points: 3
   title: Question 2
   type: short_answer
 - id: q3
   max_points: 20
   rubric:
-  - description: "Starts with the correct initial sequent for the formula, e.g., \u22A2\
-      \ \u2203x(Drinks(x) \u2192 \u2200y Drinks(y))."
-    name: Initial Sequent
-    points: 3
-  - description: "Correctly applies Gentzen-style inference rules (e.g., \u2200-right,\
-      \ \u2203-left, \u2192-left, etc.). Shows step-by-step decomposition leading\
-      \ to an axiom or empty antecedent."
-    name: Rule Application
-    points: 12
-  - description: "The proof ends with a clear tautology or contradiction (e.g., \u0393\
-      , A \u22A2 A, \u0394) demonstrating the formula's validity in the sequent calculus."
-    name: Proof Termination
+  - description: Demonstrates knowledge of sequent calculus rules used
+    name: Understanding of Gentzen system
+    points: 5
+  - description: Correctly applies quantifier and propositional rules in the proof
+    name: Proper application of rules
+    points: 10
+  - description: The sequent proof ends with the desired formula and no logical gaps
+    name: Correctness of proof
     points: 5
   title: Question 3
   type: short_answer
 - id: q4
   max_points: 20
   rubric:
-  - description: "Follows the hint to mimic the natural language proof by cases, e.g.,\
-      \ using the Deduction Theorem on \u2200y Drinks(y) and \xAC\u2200y Drinks(y)."
-    name: Proof Strategy
-    points: 4
-  - description: "Correctly cites the given theorems (\u22A2\u2200x(p(x)\u2192q(x))\
-      \ \u2192 (\u2203xp(x)\u2192\u2203xq(x)) and \u22A2(\xACA\u2192B) \u2192 ((A\u2192\
-      B)\u2192B)) and uses them in the derivation."
-    name: Axiom and Theorem Usage
-    points: 8
-  - description: Provides a numbered list of steps with clear justifications (Axiom,
-      MP, Generalization, Deduction Theorem).
-    name: Step-by-Step Derivation
+  - description: Correctly cites the two given theorems at appropriate steps
+    name: Use of given theorems
     points: 5
-  - description: "Derives the target formula \u2203x(Drinks(x) \u2192 \u2200y Drinks(y))\
-      \ as the final line."
-    name: Final Conclusion
-    points: 3
+  - description: "Derives implications for both \xAC\u2200yp(y) \u2192 \u2203x(...)\
+      \ and \u2200yp(y) \u2192 \u2203x(...)"
+    name: Handling of two cases
+    points: 5
+  - description: Correctly uses deduction theorem and modus ponens
+    name: Application of deduction theorem and MP
+    points: 5
+  - description: The Hilbert proof is complete and logically sound
+    name: Overall correctness
+    points: 5
   title: Question 4
   type: short_answer
 - id: q5
   max_points: 15
   rubric:
-  - description: "Converts implications to disjunctions using equivalence (A\u2192\
-      B \u2261 \xACA\u2228B)."
-    name: Elimination of Implications
-    points: 3
-  - description: Correctly applies De Morgan's laws and quantifier duality to move
-      negations inward to atomic formulas.
-    name: Pushing Negations Inward
-    points: 3
-  - description: Converts the formula to prenex form (all quantifiers at the front)
-      and introduces Skolem functions to eliminate existential quantifiers, resulting
-      in a PCNF.
-    name: Prenex Normal Form
+  - description: "Correctly removes \u2192 using logical equivalences"
+    name: Elimination of implications
     points: 4
-  - description: Expresses the final PCNF as a set of clauses (a set of sets of literals)
-      as required. Must be correct and in proper clausal notation.
-    name: Clausal Form
-    points: 5
+  - description: Moves quantifiers to the front correctly
+    name: Prenex form
+    points: 4
+  - description: Introduces Skolem functions for existential quantifiers
+    name: Skolemization
+    points: 4
+  - description: Writes final set of clauses in clausal form
+    name: Clausal form
+    points: 3
   title: Question 5
   type: short_answer
 - id: q6
   max_points: 15
   rubric:
-  - description: Applies the unification algorithm step-by-step, showing the composition
-      of substitutions.
-    name: Unification Algorithm Application
+  - description: Correctly sets up equations from the pair of atomic formulas
+    name: Setting up equations
     points: 5
-  - description: Performs occur check where necessary (though none appears in this
-      example).
-    name: Occur Check
-    points: 3
-  - description: "Derives the most general unifier (MGU) correctly: \xB5 = {x \u21A6\
-      \ f(g(a)), y \u21A6 a, z \u21A6 g(a)}."
-    name: Final Substitution
+  - description: Applies substitutions step by step correctly
+    name: Substitution steps
     points: 5
-  - description: "Verifies that applying \xB5 to both atomic formulas yields the same\
-      \ term (optional but good practice)."
-    name: Verification
-    points: 2
+  - description: Provides correct most general unifier
+    name: Final MGU
+    points: 5
   title: Question 6
   type: short_answer

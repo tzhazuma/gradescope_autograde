@@ -381,6 +381,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         ui.select(
                             label="Model",
                             options={
+                                "deepseek-v4-pro": "DeepSeek V4 Pro",
                                 "deepseek-v4-flash": "DeepSeek V4 Flash",
                                 "mimo-v2.5": "MiMo V2.5 (Multimodal)",
                                 "mimo-v2.5-pro": "MiMo V2.5 Pro (Multimodal)",

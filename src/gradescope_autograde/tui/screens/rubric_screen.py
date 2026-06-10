@@ -62,6 +62,11 @@ class RubricScreen(Screen):
             ModelSelector(id="rubric-model-select"),
             Button("Generate Rubric", id="generate-rubric", variant="success"),
             Static("", id="rubric-status"),
+            Horizontal(
+                Button("Quit", id="quit", variant="default"),
+                Button("Next: Grading Config →", id="next-step", variant="primary"),
+                id="button-bar",
+            ),
             id="main",
         )
         yield Footer()
@@ -164,6 +169,10 @@ class RubricScreen(Screen):
             question_pdf=question_pdf,
             rubric_path=rubric_path,
         ))
+
+    @on(Button.Pressed, "#quit")
+    def _quit(self) -> None:
+        self.app.action_quit()
 
     def action_go_back(self) -> None:
         self.app.pop_screen()

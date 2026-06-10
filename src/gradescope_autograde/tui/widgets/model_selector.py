@@ -37,6 +37,11 @@ class ModelSelector(Select[str]):
                 [
                     {
                         "provider": "opencode-go",
+                        "id": "deepseek-v4-pro",
+                        "name": "DeepSeek V4 Pro",
+                    },
+                    {
+                        "provider": "opencode-go",
                         "id": "deepseek-v4-flash",
                         "name": "DeepSeek V4 Flash",
                     },
@@ -44,6 +49,11 @@ class ModelSelector(Select[str]):
                         "provider": "opencode-go",
                         "id": "mimo-v2.5",
                         "name": "MiMo V2.5",
+                    },
+                    {
+                        "provider": "opencode-go",
+                        "id": "mimo-v2.5-pro",
+                        "name": "MiMo V2.5 Pro",
                     },
                 ],
             )
