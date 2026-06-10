@@ -42,3 +42,4 @@ data/grades/
 .env.local
 .env.production
 secrets/
+.opencode/
