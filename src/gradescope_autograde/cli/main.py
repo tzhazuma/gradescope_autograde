@@ -696,7 +696,8 @@ def list_questions_cli(ctx: click.Context, source: str | None, course: str | Non
 @click.argument("message", required=False, default=None)
 @click.option("--model", "-m", default="mimo-v2.5", help="Model to use (default: mimo-v2.5)")
 @click.option("--provider", "-p", default="opencode-go", help="Provider: opencode-go or lmstudio")
-def chat(message: str | None, model: str, provider: str) -> None:
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output with streaming")
+def chat(message: str | None, model: str, provider: str, verbose: bool) -> None:
     """Chat with OpenCode AI to operate the autograder via natural language.
 
     \b
@@ -739,14 +740,12 @@ def chat(message: str | None, model: str, provider: str) -> None:
 
     full_model = f"{provider}/{model}"
 
-    # Single shot mode
     if message:
         console.print(f"[dim]Running: opencode run -m {full_model} {message}[/dim]")
-        output = run_chat(message, model=full_model)
+        output = run_chat(message, model=full_model, verbose=verbose)
         console.print(output)
         return
 
-    # Interactive REPL mode
     console.print("[bold]AI Chat Mode[/bold]")
     console.print("Type 'exit' or 'quit' to leave.\n")
     console.print(f"[dim]Model: {full_model}[/dim]\n")
@@ -762,8 +761,9 @@ def chat(message: str | None, model: str, provider: str) -> None:
         if msg.lower() in ("exit", "quit", "q"):
             console.print("[dim]Goodbye![/dim]")
             break
-        with console.status("[bold yellow]Thinking...[/bold yellow]"):
-            output = run_chat(msg, model=full_model)
+        if verbose:
+            console.print(f"[dim]Sending: {msg}[/dim]")
+        output = run_chat(msg, model=full_model, verbose=verbose)
         console.print(output)
 
 

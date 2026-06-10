@@ -251,8 +251,11 @@ Launches a full-screen Textual-based terminal interface with:
 - **Course selection** — browse and select from your Gradescope courses
 - **Assignment selection** — pick the assignment to grade
 - **Configuration** — choose question PDF, rubric YAML, model, and grading instructions
+- **Rubric generation** — generate rubrics from question/answer PDFs using AI
+- **Question selector** — fetch and select specific questions from Gradescope
 - **Live grading** — watch progress with a progress bar and log output
 - **Results review** — view scores with confidence levels and flags
+- **AI Chat** — integrated chat interface for natural language commands
 
 Keyboard navigation: `Tab` to move focus, `Space` to toggle selection, `Enter` to activate,
 `Escape` to go back, `q` to quit. Selected items appear in **bold**, unchecked items in dim.
@@ -362,6 +365,17 @@ gs-autograde export --format gradescope     # Gradescope bulk upload CSV
 gs-autograde export --format detailed       # Per-criterion breakdown CSV
 gs-autograde export --format json           # Full JSON export
 ```
+
+### `chat` — AI Chat Mode
+
+```bash
+gs-autograde chat                              # Interactive REPL
+gs-autograde chat "grade hw9 q4 for si120"     # Single-shot command
+gs-autograde chat -p lmstudio -m gemma4-12b    # Use LM Studio
+gs-autograde chat -v "what is 2+2?"            # Verbose output
+```
+
+Natural language assistant powered by OpenCode CLI. Ask questions about grading, request rubric generation, or execute grading commands using natural language.
 
 ---
 

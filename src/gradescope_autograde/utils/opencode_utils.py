@@ -152,13 +152,14 @@ def merge_provider_to_config(provider_json_str: str, provider_name: str = "openc
         return False
 
 
-def run_chat(message: str, working_dir: str | None = None, model: str = "opencode-go/mimo-v2.5") -> str:
+def run_chat(message: str, working_dir: str | None = None, model: str = "opencode-go/mimo-v2.5", verbose: bool = False) -> str:
     """Run ``opencode run <message>`` and return the output.
 
     Args:
         message: Natural-language command to send to opencode.
         working_dir: Optional working directory for the session.
         model: Model identifier in ``provider/model`` format.
+        verbose: If True, include stderr output.
 
     Returns:
         Stdout + stderr from the run command.
@@ -169,15 +170,42 @@ def run_chat(message: str, working_dir: str | None = None, model: str = "opencod
 
     cmd = [opencode, "run", "-m", model] + message.strip().split()
     try:
-        r = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            cwd=working_dir,
-        )
-        return r.stdout + ("\n" + r.stderr if r.stderr else "")
+        if verbose:
+            import sys
+            result_parts = []
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=working_dir,
+                bufsize=1,
+            )
+            
+            for line in process.stdout:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                result_parts.append(line)
+            
+            process.wait(timeout=600)
+            
+            stderr_output = process.stderr.read()
+            if stderr_output and verbose:
+                sys.stderr.write(stderr_output)
+                sys.stderr.flush()
+                result_parts.append("\n" + stderr_output)
+            
+            return "".join(result_parts)
+        else:
+            r = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,
+                cwd=working_dir,
+            )
+            return r.stdout + ("\n" + r.stderr if r.stderr else "")
     except subprocess.TimeoutExpired:
-        return "OpenCode command timed out after 120 seconds."
+        return "OpenCode command timed out after 600 seconds (10 minutes)."
     except Exception as e:
         return f"Error running opencode: {e}"

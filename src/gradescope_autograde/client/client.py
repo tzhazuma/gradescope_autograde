@@ -47,33 +47,54 @@ class GSClient:
         return parse_submissions(resp.text)
 
     def list_questions(self, course_id: str, assignment_id: str) -> list[dict]:
-        """Extract question/score column names from the review grades table.
+        """Extract question list from the assignment outline.
 
-        Returns a list of dicts with ``id`` (numeric) and ``name`` (header text).
-        Falls back to an empty list when the page has no per‑question columns.
+        Returns a list of dicts with ``id`` (numeric Gradescope ID),
+        ``name`` (question title), and ``weight`` (point value).
+        Falls back to review_grades headers if outline is unavailable.
         """
+        import json as _json
+        import html as _html
+        from bs4 import BeautifulSoup
+
+        self._limiter.wait()
+        try:
+            resp = self._session.get(
+                f"/courses/{course_id}/assignments/{assignment_id}/outline/edit",
+                timeout=10,
+            )
+            soup = BeautifulSoup(resp.text, "html.parser")
+            elem = soup.find(attrs={"data-react-props": True})
+            if elem:
+                props = _html.unescape(elem["data-react-props"])
+                data = _json.loads(props)
+                outline = data.get("outline", [])
+                if outline:
+                    questions = []
+                    for q in outline:
+                        questions.append({
+                            "id": str(q["id"]),
+                            "name": q.get("title", f"Q{q.get('index', '?')}"),
+                            "weight": q.get("weight", ""),
+                        })
+                    return questions
+        except Exception:
+            pass
+
         self._limiter.wait()
         resp = self._session.get(
             f"/courses/{course_id}/assignments/{assignment_id}/review_grades"
         )
-        from bs4 import BeautifulSoup
         import re
 
         soup = BeautifulSoup(resp.text, "html.parser")
         questions: list[dict] = []
 
-        # Score columns in the table are typically rendered as <td> with question
-        # scores.  We detect them by looking at the second data row's <td> cells
-        # and mapping back to <th> headers.
-        #
-        # Simpler heuristic: collect <th> cells that look like question titles
-        # (short text, not generic headers).
         for th in soup.find_all("th"):
             text = th.get_text(strip=True)
             if not text:
                 continue
             low = text.lower().strip()
-            # Skip generic column headers
             skip = {"name", "email", "score", "status", "submission", "submitted",
                     "student", "id", "view", "action", "points possible", "total",
                     "late", "time", "date", "graded?", "viewed?", "time (cst)",
@@ -82,7 +103,6 @@ class GSClient:
                 continue
             if len(text) > 60:
                 continue
-            # Must contain at least one letter (not purely numeric)
             if not re.search(r'[a-zA-Z]', text):
                 continue
             questions.append({"id": f"q{len(questions)+1}", "name": text})

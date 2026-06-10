@@ -6,7 +6,7 @@ from textual import on, work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Static, TextArea
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, TextArea
 
 from gradescope_autograde.tui.widgets.model_selector import ModelSelector
 
@@ -24,6 +24,7 @@ class ConfigScreen(Screen):
         self.course_name = course_name
         self.assignment_id = assignment_id
         self.assignment_title = assignment_title
+        self._fetched_questions: list[dict] = []
 
     BINDINGS = [
         ("q", "quit", "Quit"),
@@ -44,27 +45,43 @@ class ConfigScreen(Screen):
                 Button("Browse...", id="browse-pdf", variant="default"),
                 classes="path-row",
             ),
-            Label("Rubric File Path (.yaml/.yml/.pdf/.tex)", classes="field-label"),
+            Label("Rubric File Path (.yaml/.yml)", classes="field-label"),
             Horizontal(
                 Input(placeholder="config/rubrics/default_rubric.yaml", id="rubric-path"),
                 Button("Browse...", id="browse-rubric", variant="default"),
                 classes="path-row",
             ),
-            Button("Show Questions from Rubric", id="show-questions", variant="default"),
+            Button("Show Rubric Questions", id="show-questions", variant="default"),
+            Label("--- Generate Rubric from PDF ---", classes="field-label"),
+            Label("Answer PDF Path (optional, for rubric generation)", classes="field-label"),
+            Horizontal(
+                Input(placeholder="data/input/answer.pdf", id="answer-pdf"),
+                Button("Browse...", id="browse-answer", variant="default"),
+                classes="path-row",
+            ),
+            Label("Rubric Generation Model", classes="field-label"),
+            ModelSelector(id="rubric-model-select"),
+            Button("Generate Rubric", id="generate-rubric", variant="success"),
+            Label("--- Grading Options ---", classes="field-label"),
             Label("Extra Grading Instructions (optional)", classes="field-label"),
             TextArea(
                 text="",
                 id="extra-instructions",
             ),
-            Label("AI Model", classes="field-label"),
-            ModelSelector(),
+            Label("AI Model for Grading", classes="field-label"),
+            ModelSelector(id="model-select"),
             Horizontal(
                 Button("Fetch GS Questions", id="fetch-gs-questions", variant="default"),
-                Button("Show Rubric Questions", id="show-questions", variant="default"),
             ),
-            Label("Questions to Grade (comma-separated IDs, e.g. q1,q4)", classes="field-label"),
+            Label("Questions to Grade", classes="field-label"),
+            Select(
+                options=[("All Questions", "__all__")],
+                prompt="Select questions to grade",
+                id="question-select",
+                allow_blank=True,
+            ),
             Input(
-                placeholder='Leave empty for all questions',
+                placeholder="Or enter comma-separated IDs (e.g. q1,q4)",
                 id="question-ids",
             ),
             Horizontal(
@@ -85,7 +102,6 @@ class ConfigScreen(Screen):
         )
         yield Footer()
 
-    
     def _on_browse_file(self, input_id: str, file_types: list[str] | None = None) -> None:
         from gradescope_autograde.utils.file_picker import pick_file
 
@@ -108,6 +124,11 @@ class ConfigScreen(Screen):
     def _browse_rubric(self) -> None:
         self._on_browse_file("rubric-path", ["yaml", "yml", "pdf", "tex"])
 
+    @on(Button.Pressed, "#browse-answer")
+    @work(thread=True)
+    def _browse_answer(self) -> None:
+        self._on_browse_file("answer-pdf", ["pdf"])
+
     def _toggle_btn(self, btn_id: str, attr: str, label_on: str, label_off: str) -> bool:
         val = not getattr(self, attr, False)
         setattr(self, attr, val)
@@ -117,6 +138,7 @@ class ConfigScreen(Screen):
         return val
 
     @on(Button.Pressed, "#fetch-gs-questions")
+    @work(thread=True)
     def _fetch_gs_questions(self) -> None:
         status = self.query_one("#config-status", Static)
         try:
@@ -136,14 +158,35 @@ class ConfigScreen(Screen):
             client = GSClient(session)
             gs_qs = client.list_questions(self.course_id, self.assignment_id)
             if gs_qs:
+                self._fetched_questions = gs_qs
                 lines = ["Questions from Gradescope:"]
                 for q in gs_qs:
                     lines.append(f"  {q['id']}: {q['name']}")
                 status.update("\n".join(lines))
+                self._update_question_selector(gs_qs)
             else:
                 status.update("[yellow]No per-question columns in Gradescope for this assignment.[/]")
         except Exception as e:
             status.update(f"[error]Failed to fetch: {e}[/]")
+
+    def _update_question_selector(self, questions: list[dict]) -> None:
+        select = self.query_one("#question-select", Select)
+        options = [("All Questions", "__all__")]
+        for q in questions:
+            qid = q.get("id", q.get("name", ""))
+            name = q.get("name", qid)
+            options.append((f"{qid}: {name}", str(qid)))
+        self.app.call_from_thread(select.set_options, options)
+
+    @on(Select.Changed, "#question-select")
+    def _on_question_selected(self, event: Select.Changed) -> None:
+        if event.value and event.value != "__all__":
+            input_widget = self.query_one("#question-ids", Input)
+            current = input_widget.value.strip()
+            if current:
+                input_widget.value = f"{current},{event.value}"
+            else:
+                input_widget.value = str(event.value)
 
     @on(Button.Pressed, "#show-questions")
     def _show_questions(self) -> None:
@@ -160,8 +203,63 @@ class ConfigScreen(Screen):
             for q in questions:
                 lines.append(f"{q['id']:>6s}  {q['title']:30s}  {q['max_points']:>6.0f}")
             self.query_one("#config-status", Static).update("\n".join(lines))
+            self._update_question_selector(questions)
         except Exception as e:
             self.query_one("#config-status", Static).update(f"[error]Error: {e}[/]")
+
+    @on(Button.Pressed, "#generate-rubric")
+    @work(thread=True)
+    def _generate_rubric(self) -> None:
+        status = self.query_one("#config-status", Static)
+        question_pdf = self.query_one("#question-pdf", Input).value.strip()
+        if not question_pdf:
+            status.update("[error]Question PDF path is required for rubric generation.[/]")
+            return
+
+        answer_pdf = self.query_one("#answer-pdf", Input).value.strip() or None
+        extra = self.query_one("#extra-instructions", TextArea).text.strip()
+        model_selector = self.query_one("#rubric-model-select", ModelSelector)
+        model_info = model_selector.selected_model
+
+        if model_info is None:
+            status.update("[error]Please select a model for rubric generation.[/]")
+            return
+
+        provider_name, model_id = model_info
+
+        status.update("[dim]Generating rubric... This may take a minute.[/]")
+        try:
+            from gradescope_autograde.grader.rubric_generator import generate_rubric
+            from gradescope_autograde.config import load_config
+
+            cfg = load_config(self.app.config_path)
+            api_key = cfg.llm.api_key if hasattr(cfg.llm, 'api_key') else None
+
+            rubric = generate_rubric(
+                question_pdf=question_pdf,
+                answer_pdf=answer_pdf,
+                extra_instructions=extra,
+                model=model_id,
+                api_key=api_key,
+                provider_type=provider_name,
+            )
+
+            rubric_path = f"config/rubrics/generated_{self.assignment_id}.yaml"
+            Path(rubric_path).parent.mkdir(parents=True, exist_ok=True)
+
+            import yaml
+            with open(rubric_path, "w") as f:
+                yaml.dump(rubric, f, default_flow_style=False)
+
+            self.query_one("#rubric-path", Input).value = rubric_path
+            status.update(f"[green]Rubric generated and saved to: {rubric_path}[/]")
+
+            from gradescope_autograde.grader.rubric_parser import parse_questions
+            questions = parse_questions(rubric)
+            self._update_question_selector(questions)
+
+        except Exception as e:
+            status.update(f"[error]Rubric generation failed: {e}[/]")
 
     @on(Button.Pressed, "#toggle-verbose")
     def _toggle_verbose(self) -> None:
@@ -247,15 +345,15 @@ class ConfigScreen(Screen):
 
     @on(Button.Pressed, "#open-chat")
     def _open_chat(self) -> None:
-        from gradescope_autograde.utils.opencode_utils import detect_opencode, run_chat, get_install_instructions
+        from gradescope_autograde.utils.opencode_utils import detect_opencode
+        from gradescope_autograde.tui.screens.chat_screen import ChatScreen
 
         detection = detect_opencode()
-        status = self.query_one("#config-status", Static)
         if not detection["installed"]:
+            status = self.query_one("#config-status", Static)
             status.update("[error]OpenCode CLI not installed. Run: brew install opencode[/error]")
             return
-        status.update(f"[dim]OpenCode chat ready! Use: gs-autograde chat[/dim]\n"
-                       f"[dim]{get_install_instructions()}[/dim]")
+        self.app.push_screen(ChatScreen(verbose=getattr(self, "_verbose", False)))
 
     @on(Button.Pressed, "#back")
     def _on_back(self) -> None:

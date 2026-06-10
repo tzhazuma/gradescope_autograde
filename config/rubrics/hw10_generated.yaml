@@ -1,0 +1,124 @@
+questions:
+- id: q1
+  max_points: 15
+  rubric:
+  - description: "Accurately translates the statement into a first-order logic formula,\
+      \ using appropriate quantifiers and logical structure. The formula is logically\
+      \ equivalent to \u2203x (D(x) \u2192 \u2200y D(y)) or similar."
+    name: Correct Translation
+    points: 5
+  - description: Correctly identifies the two cases (everyone drinks; not everyone
+      drinks) and applies the definition of implication to show the formula is true
+      in each case.
+    name: Proof by Cases
+    points: 5
+  - description: Provides a clear, rigorous argument that the formula holds in all
+      non-empty domains, concluding that it is valid. May explicitly mention the domain
+      non-emptiness assumption.
+    name: Validity Conclusion
+    points: 5
+  title: Question 1
+  type: short_answer
+- id: q2
+  max_points: 15
+  rubric:
+  - description: "Correctly negates the formula and applies duality rules for quantifiers\
+      \ (e.g., \xAC\u2203x A \u2261 \u2200x\xACA, \xAC\u2200y A \u2261 \u2203y\xAC\
+      A) at the root and as needed."
+    name: Initial Setup and Quantifier Rules
+    points: 5
+  - description: "Accurately applies propositional rules (e.g., \xAC(A\u2192B) gives\
+      \ A and \xACB) and instantiates quantifiers with new or existing constants,\
+      \ maintaining the universal formulas for further instantiation."
+    name: Tableau Expansion Rules
+    points: 5
+  - description: "Successfully closes the tableau branch by deriving a contradiction\
+      \ (e.g., D(a2) and \xACD(a2)). Demonstrates that the negation is unsatisfiable,\
+      \ proving validity of the original formula."
+    name: Closure and Branch Completion
+    points: 5
+  title: Question 2
+  type: short_answer
+- id: q3
+  max_points: 20
+  rubric:
+  - description: "Applies Gentzen system inference rules correctly for connectives\
+      \ (\u2192, \xAC, etc.) and structural rules as needed, without logical errors."
+    name: Correct Use of Logical Rules
+    points: 5
+  - description: "Correctly introduces and eliminates quantifiers (\u2203, \u2200\
+      ) with proper eigenvariable conditions and substitution. No variable capture\
+      \ or misuse."
+    name: Quantifier Handling
+    points: 5
+  - description: Presents a complete proof tree or sequence that starts from axioms
+      or appropriate initial sequents and reaches the target sequent. The proof is
+      well-organized.
+    name: Proof Structure and Closure
+    points: 5
+  - description: The proof fully demonstrates the validity of the formula in the Gentzen
+      system, with no missing steps or gaps.
+    name: Overall Correctness and Completeness
+    points: 5
+  title: Question 3
+  type: short_answer
+- id: q4
+  max_points: 20
+  rubric:
+  - description: "Correctly derives \u2203x(p(x) \u2192 \u2200y p(y)) under the assumption\
+      \ \u2200y p(y), using appropriate Hilbert system axioms, modus ponens, and generalization."
+    name: "Case 1: Assuming \u2200y p(y)"
+    points: 5
+  - description: "Correctly derives \u2203x(p(x) \u2192 \u2200y p(y)) under the assumption\
+      \ \xAC\u2200y p(y), utilizing the given theorem and other allowed rules."
+    name: "Case 2: Assuming \xAC\u2200y p(y)"
+    points: 5
+  - description: Properly applies the deduction theorem to transform the two case
+      derivations into conditional theorems.
+    name: Application of Deduction Theorem
+    points: 5
+  - description: "Uses the provided theorem (\xACA \u2192 B) \u2192 ((A \u2192 B)\
+      \ \u2192 B) to combine the two conditional results, deriving the target formula\
+      \ without any assumptions. The overall proof is coherent and valid."
+    name: Final Combination and Derivation
+    points: 5
+  title: Question 4
+  type: short_answer
+- id: q5
+  max_points: 15
+  rubric:
+  - description: "Correctly transforms the formula by eliminating implications (A\
+      \ \u2192 B to \xACA \u2228 B) and moving negations inward using logical equivalences."
+    name: Eliminating Implications and Negations
+    points: 5
+  - description: Brings quantifiers to the front (prenex normal form) correctly, and
+      applies skolemization to remove existential quantifiers, introducing new function
+      symbols as needed.
+    name: Quantifier Manipulations and Skolemization
+    points: 5
+  - description: Represents the final formula correctly in clausal form (a set of
+      clauses), with proper variable standardization if needed. The clauses correspond
+      to the skolemized formula.
+    name: Clausal Form Output
+    points: 5
+  title: Question 5
+  type: short_answer
+- id: q6
+  max_points: 15
+  rubric:
+  - description: Correctly identifies the disagreement sets and decomposes the terms,
+      matching corresponding arguments of the predicate p.
+    name: Unification Setup and Decomposition
+    points: 5
+  - description: Applies substitutions correctly and checks for occurs-check failures.
+      Demonstrates the step-by-step binding process (e.g., y = a, x = f(z), z = g(y),
+      leading to z = g(a)).
+    name: Substitution Steps
+    points: 5
+  - description: "Produces the correct most general unifier (mgU): {x \u2190 f(g(a)),\
+      \ y \u2190 a, z \u2190 g(a)}. The unifier is in its simplest form and correctly\
+      \ unifies the two atoms."
+    name: Final Most General Unifier
+    points: 5
+  title: Question 6
+  type: short_answer
