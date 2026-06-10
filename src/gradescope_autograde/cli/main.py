@@ -345,7 +345,6 @@ def grade(
             provider_type=rubric_gen_provider if rubric_gen_provider != "opencode-go" else "opencode-go",
         )
         if verbose:
-            import json
             error_console.print(f"[dim]Generated rubric with {len(rubric_data.get('questions',[]))} question(s)[/dim]")
     else:
         from gradescope_autograde.grader.rubric_parser import load_rubric as _load_rubric
