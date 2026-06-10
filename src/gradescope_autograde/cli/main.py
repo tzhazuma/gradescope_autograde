@@ -329,9 +329,8 @@ def grade(
         from gradescope_autograde.grader.rubric_generator import generate_rubric as _gen_rubric
 
         session, cfg = _create_session(config_path)
-        answer_pdf = rubric  # when --gen-rubric, --rubric is used as answer PDF path
-        question_pdf = rubric.replace("ans", "")  # guess: hw9ans.pdf → hw9.pdf
-        from pathlib import Path
+        answer_pdf = rubric
+        question_pdf = rubric.replace("ans", "")
         if not Path(question_pdf).exists():
             question_pdf = rubric  # fallback: use rubric path as question PDF
             answer_pdf = None
