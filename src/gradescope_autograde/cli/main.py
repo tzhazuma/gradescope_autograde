@@ -694,43 +694,62 @@ def list_questions_cli(ctx: click.Context, source: str | None, course: str | Non
 
 @cli.command()
 @click.argument("message", required=False, default=None)
-def chat(message: str | None) -> None:
+@click.option("--model", "-m", default="mimo-v2.5", help="Model to use (default: mimo-v2.5)")
+@click.option("--provider", "-p", default="opencode-go", help="Provider: opencode-go or lmstudio")
+def chat(message: str | None, model: str, provider: str) -> None:
     """Chat with OpenCode AI to operate the autograder via natural language.
 
     \b
     Examples:
-      gs-autograde chat                          # enter interactive REPL
-      gs-autograde chat "grade hw9 q4 for si120" # single-shot message
+      gs-autograde chat                              # interactive REPL
+      gs-autograde chat "grade hw9 q4 for si120"     # single-shot
+      gs-autograde chat -p lmstudio -m gemma4-12b    # use LM Studio
     """
-    from gradescope_autograde.utils.opencode_utils import detect_opencode, get_install_instructions, generate_provider_config, merge_provider_to_config, run_chat
+    from gradescope_autograde.utils.opencode_utils import detect_opencode, get_install_instructions, generate_provider_config, generate_lmstudio_provider_config, merge_provider_to_config, run_chat
 
     detection = detect_opencode()
     if not detection["installed"]:
         console.print("[bold red]OpenCode CLI is not installed.[/bold red]")
         console.print(get_install_instructions())
-        console.print("After installation, run 'gs-autograde chat' again.")
-        console.print("[dim]Tip: brew install opencode[/dim]")
         return
 
-    console.print(f"[dim]OpenCode {detection.get('version', '?')} detected at {detection['path']}[/dim]")
+    console.print(f"[dim]OpenCode {detection.get('version', '?')} at {detection['path']}[/dim]")
+    console.print(f"[dim]Provider: {provider}, Model: {model}[/dim]")
 
-    if not detection["has_provider"]:
-        console.print("[yellow]opencode-go provider not found in opencode config.[/yellow]")
+    # LM Studio: auto-start the server
+    if provider == "lmstudio":
+        try:
+            from gradescope_autograde.lmstudio.manager import LmsManager
+            from gradescope_autograde.lmstudio.manager import detect_lmstudio as _detect_lms
+            lms_status = _detect_lms()
+            if not lms_status.get("server_running"):
+                console.print("[dim]LM Studio server not running. Starting...[/dim]")
+                lm = LmsManager()
+                if lm.ensure_running():
+                    console.print("[green]LM Studio server started.[/green]")
+                else:
+                    console.print("[yellow]Could not start LM Studio server.[/yellow]")
+            else:
+                console.print("[dim]LM Studio server already running.[/dim]")
+            if not detection.get("has_provider"):
+                console.print("[yellow]LM Studio provider not in opencode config. Adding...[/yellow]")
+                merge_provider_to_config(generate_lmstudio_provider_config(), "lmstudio")
+        except Exception as e:
+            console.print(f"[yellow]LM Studio setup warning: {e}[/yellow]")
+
+    full_model = f"{provider}/{model}"
 
     # Single shot mode
     if message:
-        console.print(f"[dim]Running: opencode run {message}[/dim]")
-        output = run_chat(message)
+        console.print(f"[dim]Running: opencode run -m {full_model} {message}[/dim]")
+        output = run_chat(message, model=full_model)
         console.print(output)
         return
 
     # Interactive REPL mode
-    console.print("[bold]AI Chat Mode[/bold] — describe what you want to do with the autograder.")
+    console.print("[bold]AI Chat Mode[/bold]")
     console.print("Type 'exit' or 'quit' to leave.\n")
-    console.print("[dim]Examples:[/dim]")
-    console.print("[dim]  grade hw9 q4 for course 1273022 with multimodal mimo-v2.5[/dim]")
-    console.print("[dim]  list all assignments for si120[/dim]")
-    console.print("[dim]  show me the scores for hw9[/dim]\n")
+    console.print(f"[dim]Model: {full_model}[/dim]\n")
 
     while True:
         try:
@@ -743,9 +762,7 @@ def chat(message: str | None) -> None:
         if msg.lower() in ("exit", "quit", "q"):
             console.print("[dim]Goodbye![/dim]")
             break
-
-        console.print(f"[dim]Running: opencode run {msg[:80]}...[/dim]")
-        output = run_chat(msg)
+        output = run_chat(msg, model=full_model)
         console.print(output)
 
 

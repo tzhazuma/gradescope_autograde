@@ -96,22 +96,55 @@ def generate_provider_config(api_key: str | None = None) -> str:
     )
 
 
-def merge_provider_to_config(provider_json_str: str) -> bool:
-    """Add the opencode-go provider to the user's ``opencode.json``.
+def generate_lmstudio_provider_config() -> str:
+    """Generate the LM Studio provider JSON block for ``opencode.json``."""
+    return json.dumps(
+        {
+            "name": "LM Studio",
+            "env": [],
+            "options": {
+                "apiKey": "lm-studio",
+                "baseURL": "http://localhost:1234/v1",
+            },
+            "models": {
+                "gemma4-12b": {
+                    "name": "Gemma 4 12B",
+                    "limit": {"context": 131072, "output": 8192},
+                    "modalities": {"input": ["text", "image"], "output": ["text"]},
+                },
+                "qwen3.5-9b": {
+                    "name": "Qwen 3.5 9B",
+                    "limit": {"context": 131072, "output": 8192},
+                    "modalities": {"input": ["text"], "output": ["text"]},
+                },
+                "gemma4-e4b": {
+                    "name": "Gemma 4 E4B",
+                    "limit": {"context": 131072, "output": 8192},
+                    "modalities": {"input": ["text", "image"], "output": ["text"]},
+                },
+                "qwen3.5-4b": {
+                    "name": "Qwen 3.5 4B",
+                    "limit": {"context": 131072, "output": 8192},
+                    "modalities": {"input": ["text"], "output": ["text"]},
+                },
+            },
+        },
+        indent=2,
+    )
 
-    Returns ``True`` on success.
-    """
+
+def merge_provider_to_config(provider_json_str: str, provider_name: str = "opencode-go") -> bool:
+    """Add a provider to the user's ``opencode.json``."""
     config = Path.home() / ".config" / "opencode" / "opencode.json"
     if not config.exists():
         return False
-
     try:
         data = json.loads(config.read_text())
         if "provider" not in data:
             data["provider"] = {}
         provider = json.loads(provider_json_str)
-        data["provider"]["opencode-go"] = provider
-        bak = config.with_suffix(".json.bak.opencode-go")
+        data["provider"][provider_name] = provider
+        bak = config.with_suffix(f".json.bak.{provider_name}")
         config.rename(bak)
         config.write_text(json.dumps(data, indent=2))
         return True
