@@ -52,9 +52,15 @@ class ChatScreen(Screen):
             status.update("[dim]Verbose mode OFF[/]")
 
     @on(Button.Pressed, "#send-chat")
+    def _on_send_button(self) -> None:
+        self._send_message()
+
     @on(Input.Submitted, "#chat-input")
+    def _on_input_submitted(self) -> None:
+        self._send_message()
+
     @work(thread=True)
-    def _send_chat(self) -> None:
+    def _send_message(self) -> None:
         input_widget = self.query_one("#chat-input", Input)
         message = input_widget.value.strip()
         if not message:

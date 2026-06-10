@@ -1,6 +1,6 @@
 # Gradescope AutoGrade
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
@@ -43,6 +43,19 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 ---
 
 ## Changelog
+
+### v1.0.1 (2026-06-10)
+
+**Bug Fixes & Improvements**
+
+#### Bug Fixes
+- Fixed TUI config page layout - moved Fetch GS Questions button to proper position
+- Fixed chat Enter key not sending message (separated event handlers)
+- Added mimo-v2.5-pro model to GUI rubric and grading model selectors
+
+#### Improvements
+- Better TUI layout with question action buttons grouped together
+- Consistent model options between TUI and GUI
 
 ### v1.0.0 (2026-06-10)
 

@@ -70,10 +70,12 @@ class ConfigScreen(Screen):
             ),
             Label("AI Model for Grading", classes="field-label"),
             ModelSelector(id="model-select"),
+            Label("Questions to Grade", classes="field-label"),
             Horizontal(
                 Button("Fetch GS Questions", id="fetch-gs-questions", variant="default"),
+                Button("Show Rubric Questions", id="show-questions-from-rubric", variant="default"),
+                id="question-buttons",
             ),
-            Label("Questions to Grade", classes="field-label"),
             Select(
                 options=[("All Questions", "__all__")],
                 prompt="Select questions to grade",
