@@ -7,10 +7,11 @@ from textual.widgets import Label, Select, Static
 
 class ModelSelector(Select[str]):
     def __init__(self, **kwargs) -> None:
+        if "id" not in kwargs:
+            kwargs["id"] = "model-select"
         super().__init__(
             options=[("Loading models...", "__loading__")],
             prompt="Select an LLM model",
-            id="model-select",
             **kwargs,
         )
         self._models: list[dict] = []

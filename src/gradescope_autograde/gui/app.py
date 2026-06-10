@@ -168,11 +168,13 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         "text-lg font-semibold mb-2"
                     )
 
+                    ui.label("Question PDF:")
                     ui.upload(
-                        label="Question & Answer PDF",
+                        label="Question PDF",
                         on_upload=lambda e: state.update(question_pdf=e.content),
                     ).classes("w-full mb-4")
 
+                    ui.label("Rubric File (.yaml / .yml / .pdf / .tex):")
                     def _on_rubric_upload(e):
                         import tempfile
                         from pathlib import Path
@@ -193,18 +195,89 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                             ui.notify(f"Unsupported rubric format: {suffix}", type="warning")
 
                     ui.upload(
-                        label="Rubric File (.yaml / .yml / .pdf / .tex)",
+                        label="Rubric File",
                         on_upload=_on_rubric_upload,
                     ).classes("w-full mb-4")
+
+                    ui.label("--- Generate Rubric from PDF ---").classes("text-sm text-gray-500 mb-2")
+                    ui.label("Answer PDF (optional, for rubric generation):")
+                    ui.upload(
+                        label="Answer PDF",
+                        on_upload=lambda e: state.update(answer_pdf=e.content),
+                    ).classes("w-full mb-4")
+
+                    ui.label("Rubric Generation Model:")
+                    rubric_gen_model_select = ui.select(
+                        label="Model",
+                        options={
+                            "deepseek-v4-pro": "DeepSeek V4 Pro",
+                            "deepseek-v4-flash": "DeepSeek V4 Flash",
+                            "mimo-v2.5": "MiMo V2.5 (Multimodal)",
+                        },
+                        value="deepseek-v4-pro",
+                        on_change=lambda e: state.update(
+                            rubric_gen_model=e.value
+                        ),
+                    ).classes("w-full mb-4")
+
+                    state["rubric_gen_model"] = "deepseek-v4-pro"
+                    state["answer_pdf"] = None
+
+                    async def _generate_rubric():
+                        if not state.get("question_pdf"):
+                            ui.notify("Upload a question PDF first", type="warning")
+                            return
+                        ui.notify("Generating rubric... This may take a minute.", type="info")
+                        try:
+                            import tempfile
+                            from pathlib import Path
+                            from gradescope_autograde.grader.rubric_generator import generate_rubric
+                            from gradescope_autograde.config import load_config
+
+                            config = load_config(config_path)
+                            api_key = config.llm.api_key or None
+
+                            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                                tmp.write(state["question_pdf"])
+                                q_pdf_path = tmp.name
+
+                            a_pdf_path = None
+                            if state.get("answer_pdf"):
+                                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                                    tmp.write(state["answer_pdf"])
+                                    a_pdf_path = tmp.name
+
+                            rubric = generate_rubric(
+                                question_pdf=q_pdf_path,
+                                answer_pdf=a_pdf_path,
+                                model=state.get("rubric_gen_model", "deepseek-v4-pro"),
+                                api_key=api_key,
+                                provider_type="opencode-go",
+                            )
+
+                            Path(q_pdf_path).unlink(missing_ok=True)
+                            if a_pdf_path:
+                                Path(a_pdf_path).unlink(missing_ok=True)
+
+                            state["rubric_data"] = rubric
+                            ui.notify(f"Rubric generated with {len(rubric.get('questions', []))} questions!", type="positive")
+                            _update_question_selector(rubric)
+                        except Exception as ex:
+                            ui.notify(f"Rubric generation failed: {ex}", type="negative")
+
+                    ui.button("Generate Rubric", on_click=_generate_rubric).classes("mb-4")
+
+                    ui.label("--- Grading Options ---").classes("text-sm text-gray-500 mb-2")
 
                     def _show_rubric_questions():
                         rd = state.get("rubric_data", {})
                         qs = rd.get("questions", [])
                         if not qs:
-                            ui.notify("No questions — upload a rubric first", type="warning")
+                            ui.notify("No questions — upload or generate a rubric first", type="warning")
                             return
                         msg = "\n".join(f"• {q.get('id', '?')}: {q.get('title', '?')} ({q.get('max_points', '?')} pts)" for q in qs)
                         ui.notify(msg, type="info", multi_line=True, close_button=True)
+                        _update_question_selector(rd)
 
                     ui.label("Extra Grading Instructions:")
                     extra_instructions = ui.textarea(
@@ -222,8 +295,10 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                             client = GSClient(session_gs)
                             qs = client.list_questions(state["course_id"], state["assignment_id"])
                             if qs:
+                                state["gs_questions"] = qs
                                 msg = "\n".join(f"• {q['id']}: {q['name']}" for q in qs)
                                 ui.notify(f"GS Questions:\n{msg}", multi_line=True, close_button=True)
+                                _update_question_selector_from_gs(qs)
                             else:
                                 ui.notify("No per-question columns in Gradescope. Use rubric IDs (q1,q2...).", type="warning")
                         except Exception as e:
@@ -233,12 +308,52 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         ui.button("Fetch GS Questions", on_click=_fetch_gs_questions)
                         ui.button("Show Rubric Questions", on_click=_show_rubric_questions)
 
-                    ui.label("Questions (comma-separated IDs, e.g. q1,q4):")
+                    ui.label("Questions to Grade:")
+                    question_selector = ui.select(
+                        label="Select question",
+                        options={"all": "All Questions"},
+                        value="all",
+                    ).classes("w-full mb-2")
+
                     question_ids_input = ui.input(
-                        placeholder="Leave empty to grade all questions"
+                        placeholder="Or enter comma-separated IDs (e.g. q1,71875707)"
                     ).classes("w-full mb-4")
 
-                    ui.label("AI Model:")
+                    def _update_question_selector(rubric_data):
+                        qs = rubric_data.get("questions", [])
+                        if not qs:
+                            return
+                        opts = {"all": "All Questions"}
+                        for q in qs:
+                            qid = q.get("id", "")
+                            title = q.get("title", qid)
+                            pts = q.get("max_points", "?")
+                            opts[qid] = f"{qid}: {title} ({pts} pts)"
+                        question_selector.options = opts
+                        question_selector.value = "all"
+                        question_selector.update()
+
+                    def _update_question_selector_from_gs(gs_questions):
+                        opts = {"all": "All Questions"}
+                        for q in gs_questions:
+                            qid = q.get("id", "")
+                            name = q.get("name", "")
+                            opts[qid] = f"{qid}: {name}"
+                        question_selector.options = opts
+                        question_selector.value = "all"
+                        question_selector.update()
+
+                    def _on_question_select(e):
+                        if e.value and e.value != "all":
+                            current = question_ids_input.value.strip()
+                            if current:
+                                question_ids_input.value = f"{current},{e.value}"
+                            else:
+                                question_ids_input.value = str(e.value)
+
+                    question_selector.on("change", _on_question_select)
+
+                    ui.label("AI Model for Grading:")
                     with ui.row():
                         ui.select(
                             label="Provider",
