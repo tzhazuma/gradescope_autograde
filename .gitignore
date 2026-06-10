@@ -43,3 +43,4 @@ data/grades/
 .env.production
 secrets/
 .opencode/
+uv.lock
