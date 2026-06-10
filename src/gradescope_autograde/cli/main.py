@@ -290,6 +290,7 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @click.option("--gen-rubric", is_flag=True, help="Generate rubric from question/answer PDFs instead of loading one")
 @click.option("--rubric-gen-model", default="deepseek-v4-pro", help="Model for rubric generation (default: deepseek-v4-pro)")
 @click.option("--rubric-gen-provider", default="opencode-go", help="Provider for rubric generation (opencode-go or lmstudio)")
+@click.option("--gs-question-id", default=None, help="Numeric Gradescope question ID for upload (e.g. 71029768)")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed error messages")
 @click.pass_context
 def grade(
@@ -307,6 +308,7 @@ def grade(
     gen_rubric: bool,
     rubric_gen_model: str,
     rubric_gen_provider: str,
+    gs_question_id: str | None,
     verbose: bool,
 ) -> None:
     from gradescope_autograde.client.client import GSClient
@@ -397,6 +399,7 @@ def grade(
             upload=effective_upload,
             with_pages=with_pages,
             extraction=extraction,
+            gs_question_id=gs_question_id,
             log_func=lambda msg, v: error_console.print(f"[dim]{msg}[/dim]") if v else None,
         )
         progress.update(task, description="Grading complete!", completed=100)

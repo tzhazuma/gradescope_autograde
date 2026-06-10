@@ -57,6 +57,7 @@ class Pipeline:
         with_pages: bool = False,
         extraction: str = "auto",
         log_func: callable | None = None,
+        gs_question_id: str | None = None,
     ) -> dict:
         """Run the full grading pipeline.
 
@@ -191,6 +192,23 @@ class Pipeline:
                 # Submit grades unless dry run
                 should_upload = upload if upload is not None else not dry_run
                 if should_upload:
+                    # Build the question -> GS question ID mapping
+                    if gs_question_id:
+                        gs_qid_map = {q.get("id"): gs_question_id for q in all_qs}
+                    else:
+                        gs_qid_map = {}
+
+                    # Build student name → QS ID mapping from the question page
+                    if gs_question_id:
+                        try:
+                            qs_map = self.client.get_question_submissions_map(
+                                course_id, gs_question_id
+                            )
+                        except Exception:
+                            qs_map = {}
+                    else:
+                        qs_map = {}
+
                     upload_count = 0
                     skip_count = 0
                     for r in question_results:
@@ -199,11 +217,22 @@ class Pipeline:
                             skip_count += 1
                             log(f"  Skipping {r.get('student_name','?')}/{r.get('question_id','?')} — has errors", verbose)
                             continue
+                        rid = r.get("question_id", "")
+                        gsid = gs_qid_map.get(rid, rid)
+                        sname = r.get("student_name", "")
+                        # Find question submission ID from the mapping
+                        qs_id = ""
+                        for full_name, qsid in qs_map.items():
+                            if full_name.startswith(sname):
+                                qs_id = qsid
+                                break
+                        if not qs_id:
+                            qs_id = r.get("submission_id", "")
                         self.client.submit_grade(
                             course_id,
                             assignment_id,
-                            sub_id,
-                            r["question_id"],
+                            qs_id,
+                            gsid,
                             r["score"],
                             r.get("feedback", ""),
                         )
