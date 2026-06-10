@@ -1,6 +1,6 @@
 # Gradescope AutoGrade
 
-[![Version](https://img.shields.io/badge/version-1.0.8-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
@@ -18,9 +18,10 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 - **PDF question parsing** — extract questions and reference answers from instructor PDFs
 - **Rubric generation** — generate rubrics from question/answer PDFs using AI
 - **Confidence-based review** — flags uncertain grades for human review
-- **Interactive TUI** — terminal UI with course/assignment selection, model picker, live progress
+- **Interactive TUI** — 2-step terminal UI with rubric setup and grading config
 - **Web GUI** — cross-platform browser interface with file upload and results export
 - **Question selector** — fetch and select specific questions from Gradescope
+- **Image submission support** — handles both PDF and image submissions automatically
 - **LM Studio auto-management** — auto-detect, auto-start server, health checks
 - **CSV/JSON export** — Gradescope-compatible bulk upload format
 - **AI Chat Mode** — natural language assistant powered by OpenCode CLI
@@ -44,122 +45,38 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 
 ## Changelog
 
-### v1.0.8 (2026-06-10)
+### v1.1.0 (2026-06-10)
 
-**Security & Privacy Cleanup**
-
-#### Fixes
-- Removed generated rubric files from git (contained exam questions)
-- Added `config/rubrics/generated_*.yaml` and `config/rubrics/hw*.yaml` to .gitignore
-- Removed hardcoded course/assignment/question IDs from source code
-- Replaced specific IDs with generic placeholders in examples
-
-### v1.0.7 (2026-06-10)
-
-**Submission Handling & Question Filtering Fixes**
-
-#### Fixes
-- Lowered empty submission threshold from 100 bytes to 10 bytes
-- Added image submission detection and handling (non-PDF content)
-- Fixed GS ID to rubric ID mapping (e.g., 71875707 → q4)
-- When GS ID is entered, now correctly filters to only that question
-- Improved error messages for empty/invalid submissions
-
-### v1.0.6 (2026-06-10)
-
-**Question ID Mapping Fix**
-
-#### Fixes
-- Fixed question ID mapping between GS questions (e.g., 71875707) and rubric questions (e.g., q4)
-- When GS question ID is selected, grading now uses it for submission fetching
-- When rubric question ID is entered (e.g., q1,q4), grading filters by rubric IDs
-
-### v1.0.5 (2026-06-10)
-
-**Image Submission Fix**
-
-#### Fixes
-- Fixed image-based submission handling by passing correct `gs_question_id`
-- Removed hardcoded question ID `71029768` from TUI grading screen
-- Added `gs_question_id` parameter to GradingScreen
-- Config screen now passes fetched question ID to grading screen
-
-### v1.0.4 (2026-06-10)
-
-**Multimodal Grading Fix**
-
-#### Fixes
-- Fixed multimodal grading path to show score output after LLM call
-- Added mimo-v2.5-pro to multimodal model detection in auto mode
-- Added detailed error logging for multimodal LLM failures
-- Added response length logging for debugging
-
-### v1.0.3 (2026-06-10)
-
-**Model Options & Navigation Fixes**
-
-#### Fixes
-- Added "Next: Grading Config →" button to TUI RubricScreen (Step 1)
-- Added "Quit" button to TUI RubricScreen
-- Added deepseek-v4-pro and mimo-v2.5-pro to TUI grading model selector fallback
-- Added deepseek-v4-pro to GUI grading model selector
-
-### v1.0.2 (2026-06-10)
-
-**UI Improvements & Bug Fixes**
-
-#### Improvements
-- **TUI 2-Page Layout**: Split configuration into Step 1 (Rubric Setup) and Step 2 (Grading Config) for better usability
-  - Step 1: Question PDF, rubric file, rubric generation
-  - Step 2: Model selection, question selection, grading options
-- **GUI Async Rubric Generation**: Run rubric generation in thread to prevent connection timeout
-- **Chat Auto-Focus**: Chat input now auto-focuses on screen mount
-- Removed 'q' binding from chat screen to allow typing 'q' in messages
-
-#### Bug Fixes
-- Fixed GUI "connection lost" error during rubric generation
-- Fixed chat Enter key not working (removed conflicting 'q' binding)
-- Added mimo-v2.5-pro model to GUI model selectors
-
-### v1.0.1 (2026-06-10)
-
-**Bug Fixes & Improvements**
-
-#### Bug Fixes
-- Fixed TUI config page layout - moved Fetch GS Questions button to proper position
-- Fixed chat Enter key not sending message (separated event handlers)
-- Added mimo-v2.5-pro model to GUI rubric and grading model selectors
-
-#### Improvements
-- Better TUI layout with question action buttons grouped together
-- Consistent model options between TUI and GUI
-
-### v1.0.0 (2026-06-10)
-
-**Production Release** — All major features implemented and debugged.
+**Stable Release** — All features implemented, tested, and production-ready.
 
 #### New Features
+- **2-Step TUI Layout**: Split configuration into Step 1 (Rubric Setup) and Step 2 (Grading Config)
 - **Rubric Generation**: Generate rubrics from question/answer PDFs using AI
-  - TUI: Added Generate Rubric button with model selector and output path display
-  - GUI: Added Generate Rubric with answer PDF upload and model selection
-- **Question Selector**: Fetch and select specific questions from Gradescope
-  - TUI: Added dropdown selector that updates from GS questions or rubric
-  - GUI: Added question selector dropdown with dynamic updates
-- **AI Chat Mode**: Natural language assistant powered by OpenCode CLI
-  - Added `--verbose` flag for detailed output
-  - Fixed JSON streaming response handling
+- **Question Selector**: Fetch and select specific questions from Gradescope with ID mapping
+- **Image Submission Support**: Handles both PDF and image submissions automatically
+- **AI Chat Mode**: Natural language assistant powered by OpenCode CLI with verbose output
+- **Multiple Model Support**: deepseek-v4-pro, deepseek-v4-flash, mimo-v2.5, mimo-v2.5-pro
 
 #### Bug Fixes
 - Fixed macOS file picker (AppleScript syntax error)
 - Fixed GUI upload handling (SpooledTemporaryFile → bytes conversion)
-- Fixed ModelSelector widget ID conflict in TUI
-- Fixed chat response timeout handling
-- Improved error messages and user feedback
+- Fixed GUI "connection lost" during rubric generation (async threading)
+- Fixed chat Enter key not working (removed conflicting key bindings)
+- Fixed GS ID to rubric ID mapping for question filtering
+- Fixed multimodal grading output not showing scores
+- Fixed empty submission threshold (lowered from 100 to 10 bytes)
+
+#### Security
+- Removed generated rubric files from git (contained exam questions)
+- Added `.gitignore` rules for generated rubrics
+- Removed hardcoded course/assignment/question IDs from source code
 
 #### Improvements
-- Increased chat timeout from 2 minutes to 2 minutes with proper timeout handling
-- Added version badge and changelog to README
-- Updated development status to Production/Stable
+- Auto-focus on chat input when screen mounts
+- Consistent model options between TUI and GUI
+- Better error messages and user feedback
+- Progress indicators for rubric generation
+- Question selector updates from both GS questions and rubric
 
 ---
 
@@ -375,15 +292,21 @@ Shows a Rich table of available models from all providers. For LM Studio, querie
 gs-autograde tui
 ```
 
-Launches a full-screen Textual-based terminal interface with:
-- **Course selection** — browse and select from your Gradescope courses
-- **Assignment selection** — pick the assignment to grade
-- **Configuration** — choose question PDF, rubric YAML, model, and grading instructions
-- **Rubric generation** — generate rubrics from question/answer PDFs using AI
-- **Question selector** — fetch and select specific questions from Gradescope
-- **Live grading** — watch progress with a progress bar and log output
-- **Results review** — view scores with confidence levels and flags
-- **AI Chat** — integrated chat interface for natural language commands
+Launches a full-screen Textual-based terminal interface with 2-step workflow:
+
+**Step 1: Rubric Setup**
+- Question PDF path with file browser
+- Rubric file path with file browser
+- Rubric generation from PDFs using AI
+- Answer PDF for rubric generation
+- Model selection for rubric generation
+
+**Step 2: Grading Configuration**
+- AI model selection for grading
+- Question fetching from Gradescope
+- Question selector dropdown
+- Extra grading instructions
+- Grading options (verbose, upload, pages, extraction mode)
 
 Keyboard navigation: `Tab` to move focus, `Space` to toggle selection, `Enter` to activate,
 `Escape` to go back, `q` to quit. Selected items appear in **bold**, unchecked items in dim.
@@ -398,8 +321,11 @@ gs-autograde --config my-config.yaml gui  # Custom config path
 
 Launches a cross-platform web interface (NiceGUI) that opens in your browser. Features:
 - **5-step wizard**: Login → Select Assignment → Configure → Grade → Export
-- **File upload**: Drag & drop question PDFs and rubric YAML files (auto-parses YAML rubrics)
+- **File upload**: Drag & drop question PDFs, rubric files, and answer PDFs
+- **Rubric generation**: Generate rubrics from PDFs using AI with progress indicator
+- **Question selector**: Fetch and select specific questions from Gradescope
 - **Provider selection**: Choose between OpenCode Go (cloud) and LM Studio (local)
+- **Multiple models**: deepseek-v4-pro, deepseek-v4-flash, mimo-v2.5, mimo-v2.5-pro
 - **Extra instructions**: Add per-assignment grading notes (injected into rubric)
 - **Live progress**: Real-time grading progress with log output
 - **Results table**: View scores, export to Gradescope CSV / Detailed CSV / JSON
@@ -517,6 +443,15 @@ llm:
   model: "deepseek-v4-flash"         # 284B/13B, 1M context, text-only
   multimodal_model: "mimo-v2.5"      # 310B/15B, 1M context, text+image+video
 ```
+
+**Available Models:**
+
+| Model | Context | Best For |
+|-------|---------|----------|
+| deepseek-v4-pro | 1M | High-quality grading |
+| deepseek-v4-flash | 1M | Fast text grading |
+| mimo-v2.5 | 1M | Multimodal (PDF + images) |
+| mimo-v2.5-pro | 1M | High-quality multimodal |
 
 ### LM Studio (Local, Private)
 
