@@ -17,6 +17,7 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 - **Web GUI** — cross-platform browser interface with file upload and results export
 - **LM Studio auto-management** — auto-detect, auto-start server, health checks
 - **CSV/JSON export** — Gradescope-compatible bulk upload format
+- **AI Chat Mode** — natural language assistant powered by OpenCode CLI
 
 ## Table of Contents
 

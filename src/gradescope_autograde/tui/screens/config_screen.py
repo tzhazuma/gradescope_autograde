@@ -78,6 +78,7 @@ class ConfigScreen(Screen):
             Horizontal(
                 Button("Back", id="back", variant="default"),
                 Button("Start Grading", id="start", variant="success"),
+                Button("AI Chat", id="open-chat", variant="primary"),
                 id="button-bar",
             ),
             id="main",
@@ -243,6 +244,18 @@ class ConfigScreen(Screen):
             return _load_rubric(path)
         except Exception:
             return None
+
+    @on(Button.Pressed, "#open-chat")
+    def _open_chat(self) -> None:
+        from gradescope_autograde.utils.opencode_utils import detect_opencode, run_chat, get_install_instructions
+
+        detection = detect_opencode()
+        status = self.query_one("#config-status", Static)
+        if not detection["installed"]:
+            status.update("[error]OpenCode CLI not installed. Run: brew install opencode[/error]")
+            return
+        status.update(f"[dim]OpenCode chat ready! Use: gs-autograde chat[/dim]\n"
+                       f"[dim]{get_install_instructions()}[/dim]")
 
     @on(Button.Pressed, "#back")
     def _on_back(self) -> None:

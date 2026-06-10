@@ -693,6 +693,63 @@ def list_questions_cli(ctx: click.Context, source: str | None, course: str | Non
 
 
 @cli.command()
+@click.argument("message", required=False, default=None)
+def chat(message: str | None) -> None:
+    """Chat with OpenCode AI to operate the autograder via natural language.
+
+    \b
+    Examples:
+      gs-autograde chat                          # enter interactive REPL
+      gs-autograde chat "grade hw9 q4 for si120" # single-shot message
+    """
+    from gradescope_autograde.utils.opencode_utils import detect_opencode, get_install_instructions, generate_provider_config, merge_provider_to_config, run_chat
+
+    detection = detect_opencode()
+    if not detection["installed"]:
+        console.print("[bold red]OpenCode CLI is not installed.[/bold red]")
+        console.print(get_install_instructions())
+        console.print("After installation, run 'gs-autograde chat' again.")
+        console.print("[dim]Tip: brew install opencode[/dim]")
+        return
+
+    console.print(f"[dim]OpenCode {detection.get('version', '?')} detected at {detection['path']}[/dim]")
+
+    if not detection["has_provider"]:
+        console.print("[yellow]opencode-go provider not found in opencode config.[/yellow]")
+
+    # Single shot mode
+    if message:
+        console.print(f"[dim]Running: opencode run {message}[/dim]")
+        output = run_chat(message)
+        console.print(output)
+        return
+
+    # Interactive REPL mode
+    console.print("[bold]AI Chat Mode[/bold] — describe what you want to do with the autograder.")
+    console.print("Type 'exit' or 'quit' to leave.\n")
+    console.print("[dim]Examples:[/dim]")
+    console.print("[dim]  grade hw9 q4 for course 1273022 with multimodal mimo-v2.5[/dim]")
+    console.print("[dim]  list all assignments for si120[/dim]")
+    console.print("[dim]  show me the scores for hw9[/dim]\n")
+
+    while True:
+        try:
+            msg = console.input("[bold cyan]You> [/bold cyan]").strip()
+        except (KeyboardInterrupt, EOFError):
+            console.print("\n[dim]Goodbye![/dim]")
+            break
+        if not msg:
+            continue
+        if msg.lower() in ("exit", "quit", "q"):
+            console.print("[dim]Goodbye![/dim]")
+            break
+
+        console.print(f"[dim]Running: opencode run {msg[:80]}...[/dim]")
+        output = run_chat(msg)
+        console.print(output)
+
+
+@cli.command()
 @click.pass_context
 def tui(ctx: click.Context) -> None:
     from gradescope_autograde.tui import run_tui
