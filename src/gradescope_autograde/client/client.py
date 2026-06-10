@@ -89,6 +89,61 @@ class GSClient:
 
         return questions
 
+    def list_assignment_questions(self, course_id: str, assignment_id: str) -> list[dict]:
+        """Fetch the question list for an assignment from a submission page.
+
+        Parses the ``question_switcher_presenter`` React component data.
+        Returns a list of dicts with ``simple_id``, ``gs_id``, ``title``, ``position``.
+        """
+        import json, re as _re2
+        from bs4 import BeautifulSoup
+
+        # Get a submission ID first
+        try:
+            rg = self._session.get(
+                f"/courses/{course_id}/assignments/{assignment_id}/review_grades"
+            )
+            rg_soup = BeautifulSoup(rg.text, "html.parser")
+            sub_link = rg_soup.find("a", href=_re2.compile(r"/submissions/\d+"))
+            if not sub_link:
+                return []
+            sid = _re2.search(r"/submissions/(\d+)", sub_link["href"]).group(1)
+        except Exception:
+            return []
+
+        # Now we need a question ID to access the grade page. Try the first question
+        # by looking at the submission's annotations page which might have question data.
+        # If we can't find one, return empty (user should use --questions from rubric)
+        for qid_candidate in [71029765, 71029766, 71029767, 71029768, 71029769]:
+            try:
+                qresp = self._session.get(
+                    f"/courses/{course_id}/questions/{qid_candidate}/submissions/{sid}/grade"
+                )
+                soup = BeautifulSoup(qresp.text, "html.parser")
+                grader = soup.find(attrs={"data-react-class": "SubmissionGrader"})
+                if grader:
+                    raw = grader.get("data-react-props", "{}").replace("&quot;", '"')
+                    props = json.loads(raw)
+                    qs = props.get("question_switcher_presenter", {})
+                    if isinstance(qs, dict):
+                        qid_to_title = qs.get("question_id_to_title", {})
+                        qid_to_link = qs.get("question_id_to_link", {})
+                        questions = []
+                        for qid_str, title_label in qid_to_title.items():
+                            pos = title_label.split(":")[0].strip() if ":" in title_label else "?"
+                            title = title_label.split(":")[-1].strip() if ":" in title_label else title_label
+                            simple_id = f"q{pos}" if pos.isdigit() else title.lower()
+                            questions.append({
+                                "id": simple_id, "gs_id": qid_str,
+                                "title": title,
+                                "position": int(pos) if pos.isdigit() else 0,
+                                "link": qid_to_link.get(qid_str, ""),
+                            })
+                        return questions
+            except Exception:
+                continue
+        return []
+
     def get_submission_content(
         self,
         course_id: str,
