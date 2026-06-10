@@ -333,6 +333,13 @@ class GSClient:
 
         Automatically detects scoring type (positive/negative) and adjusts
         the point value accordingly.
+
+        **Scoring logic** (no rubric items applied):
+        - ``negative`` (deduction): default = max_points (full credit).
+          Adjustment = score - max_points.  GS computes:
+          ``result = max(0, min(max, max_points + adjustment))``.
+        - ``positive`` (addition): default = 0.  GS computes:
+          ``result = rubric_item_sum + points``.
         """
         import json
 
