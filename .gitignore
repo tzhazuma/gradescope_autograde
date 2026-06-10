@@ -22,6 +22,8 @@ Thumbs.db
 
 # Project-specific
 config/config.yaml
+config/rubrics/generated_*.yaml
+config/rubrics/hw*.yaml
 credentials.json
 .cookies/
 data/submissions/

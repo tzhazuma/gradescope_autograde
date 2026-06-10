@@ -1,6 +1,6 @@
 # Gradescope AutoGrade
 
-[![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Version](https://img.shields.io/badge/version-1.0.8-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
@@ -43,6 +43,16 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 ---
 
 ## Changelog
+
+### v1.0.8 (2026-06-10)
+
+**Security & Privacy Cleanup**
+
+#### Fixes
+- Removed generated rubric files from git (contained exam questions)
+- Added `config/rubrics/generated_*.yaml` and `config/rubrics/hw*.yaml` to .gitignore
+- Removed hardcoded course/assignment/question IDs from source code
+- Replaced specific IDs with generic placeholders in examples
 
 ### v1.0.7 (2026-06-10)
 

@@ -290,7 +290,7 @@ def parse_pdf(ctx: click.Context, pdf_path: str, separator: str, output: str | N
 @click.option("--gen-rubric", is_flag=True, help="Generate rubric from question/answer PDFs instead of loading one")
 @click.option("--rubric-gen-model", default="deepseek-v4-pro", help="Model for rubric generation (default: deepseek-v4-pro)")
 @click.option("--rubric-gen-provider", default="opencode-go", help="Provider for rubric generation (opencode-go or lmstudio)")
-@click.option("--gs-question-id", default=None, help="Numeric Gradescope question ID for upload (e.g. 71029768)")
+@click.option("--gs-question-id", default=None, help="Numeric Gradescope question ID for upload (e.g. 12345678)")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed error messages")
 @click.pass_context
 def grade(
@@ -427,7 +427,7 @@ def grade(
 @click.argument("course_id")
 @click.argument("assignment_id")
 @click.option("--results", "-r", required=True, type=click.Path(exists=True), help="Path to results JSON or CSV")
-@click.option("--gs-question-id", default=None, help="Numeric Gradescope question ID (e.g. 71029768 for Q4)")
+@click.option("--gs-question-id", default=None, help="Numeric Gradescope question ID (e.g. 12345678)")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed upload progress")
 @click.pass_context
 def upload(ctx: click.Context, course_id: str, assignment_id: str, results: str, gs_question_id: str | None, verbose: bool) -> None:
@@ -629,7 +629,7 @@ def list_questions_cli(ctx: click.Context, source: str | None, course: str | Non
       gs-autograde list-questions config/rubrics/default_rubric.yaml
 
       # From a Gradescope assignment (fetches review grades table):
-      gs-autograde list-questions --course 1273022 --assignment 8113109
+      gs-autograde list-questions --course COURSE_ID --assignment ASSIGNMENT_ID
     """
     if source and Path(source).exists():
         from gradescope_autograde.grader.rubric_parser import list_rubric_questions as _lrq

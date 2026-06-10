@@ -32,7 +32,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                     ui.button("💬 OpenCode AI Chat", on_click=lambda: ui.notify(
                         "Open OpenCode in terminal: gs-autograde chat\n\n"
                         "Examples:\n"
-                        "  grade hw9 q4 for course 1273022 with mimo-v2.5\n"
+                        "  grade hw9 q4 for course COURSE_ID with mimo-v2.5\n"
                         "  list assignments for si120\n"
                         "  show me scores for hw9",
                         type="info", multi_line=True, close_button=True,
@@ -328,7 +328,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                     ).classes("w-full mb-2")
 
                     question_ids_input = ui.input(
-                        placeholder="Or enter comma-separated IDs (e.g. q1,71875707)"
+                        placeholder="Or enter comma-separated IDs (e.g. q1,q4)"
                     ).classes("w-full mb-4")
 
                     def _update_question_selector(rubric_data):
