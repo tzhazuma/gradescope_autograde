@@ -209,11 +209,16 @@ class ConfigScreen(Screen):
         question_ids = [x.strip() for x in q_ids_raw.split(",") if x.strip()] if q_ids_raw else None
 
         gs_question_id = None
-        if question_ids and self._fetched_questions:
-            for q in self._fetched_questions:
-                if q.get("id") in question_ids or q.get("name") in question_ids:
-                    gs_question_id = q.get("id")
-                    break
+        if question_ids:
+            gs_ids = [qid for qid in question_ids if qid.isdigit()]
+            if gs_ids:
+                gs_question_id = gs_ids[0]
+                question_ids = None
+            elif self._fetched_questions:
+                for q in self._fetched_questions:
+                    if q.get("name") in question_ids:
+                        gs_question_id = q.get("id")
+                        break
 
         from gradescope_autograde.tui.screens.grading_screen import GradingScreen
         self.app.push_screen(GradingScreen(

@@ -1,6 +1,6 @@
 # Gradescope AutoGrade
 
-[![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
@@ -43,6 +43,15 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 ---
 
 ## Changelog
+
+### v1.0.6 (2026-06-10)
+
+**Question ID Mapping Fix**
+
+#### Fixes
+- Fixed question ID mapping between GS questions (e.g., 71875707) and rubric questions (e.g., q4)
+- When GS question ID is selected, grading now uses it for submission fetching
+- When rubric question ID is entered (e.g., q1,q4), grading filters by rubric IDs
 
 ### v1.0.5 (2026-06-10)
 
