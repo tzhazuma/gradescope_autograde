@@ -424,22 +424,44 @@ def grade(
 @cli.command()
 @click.argument("course_id")
 @click.argument("assignment_id")
-@click.option("--results", "-r", required=True, type=click.Path(exists=True), help="Path to results JSON")
+@click.option("--results", "-r", required=True, type=click.Path(exists=True), help="Path to results JSON or CSV")
+@click.option("--gs-question-id", default=None, help="Numeric Gradescope question ID (e.g. 71029768 for Q4)")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed upload progress")
 @click.pass_context
-def upload(ctx: click.Context, course_id: str, assignment_id: str, results: str) -> None:
+def upload(ctx: click.Context, course_id: str, assignment_id: str, results: str, gs_question_id: str | None, verbose: bool) -> None:
     from gradescope_autograde.client.client import GSClient
 
     config_path: str = ctx.obj["config_path"]
-
-    results_path = Path(results)
-    with open(results_path, encoding="utf-8") as fh:
-        data = json.load(fh)
-
     session, _cfg = _create_session(config_path)
     client = GSClient(session)
 
+    # Load results - support JSON and CSV
+    rpath = Path(results)
+    if rpath.suffix.lower() == ".csv":
+        import csv
+        with rpath.open(newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            data = [row for row in reader]
+        if verbose:
+            error_console.print(f"[dim]Loaded {len(data)} rows from CSV[/dim]")
+    else:
+        with rpath.open(encoding="utf-8") as fh:
+            data = json.load(fh)
+        if verbose:
+            error_console.print(f"[dim]Loaded {len(data)} entries from JSON[/dim]")
+
+    # Get question submission mapping if gs_question_id is provided
+    qs_map: dict[str, str] = {}
+    if gs_question_id:
+        if verbose:
+            error_console.print(f"[dim]Fetching submission mapping for question {gs_question_id}...[/dim]")
+        qs_map = client.get_question_submissions_map(course_id, gs_question_id)
+        if verbose:
+            error_console.print(f"[dim]Found {len(qs_map)} students in question submission list[/dim]")
+
     success_count = 0
     fail_count = 0
+    skipped = 0
 
     with Progress(
         SpinnerColumn(),
@@ -449,19 +471,43 @@ def upload(ctx: click.Context, course_id: str, assignment_id: str, results: str)
     ) as progress:
         task = progress.add_task(f"Uploading {len(data)} grades...", total=len(data))
         for entry in data:
-            sub_id = str(entry.get("submission_id", ""))
-            q_id = str(entry.get("question_id", ""))
-            score = float(entry.get("score", 0))
-            feedback = entry.get("feedback", "")
+            student_name = entry.get("student_name") or entry.get("Student Name") or entry.get("name", "")
+            score = float(entry.get("score") or entry.get("Score") or 0)
+            feedback = entry.get("feedback") or entry.get("Feedback", "")
+
+            # Determine question submission ID
+            qs_id = ""
+            if gs_question_id and student_name in qs_map:
+                qs_id = qs_map[student_name]
+            else:
+                qs_id = str(entry.get("submission_id") or entry.get("Submission ID", ""))
+
+            if not qs_id:
+                if verbose:
+                    error_console.print(f"  [yellow]No submission ID for {student_name}, skipping[/yellow]")
+                skipped += 1
+                progress.advance(task)
+                continue
 
             try:
-                ok = client.submit_grade(course_id, assignment_id, sub_id, q_id, score, feedback)
+                ok = client.submit_grade(
+                    course_id, assignment_id, qs_id,
+                    gs_question_id or str(entry.get("question_id", "")),
+                    score, feedback,
+                )
                 if ok:
                     success_count += 1
+                    if verbose:
+                        error_console.print(f"  [green]✓ {student_name}: {score} pts[/green]")
                 else:
                     fail_count += 1
+                    if verbose:
+                        error_console.print(f"  [red]✗ {student_name}: upload failed[/red]")
             except Exception:
                 fail_count += 1
+                if verbose:
+                    import traceback
+                    error_console.print(f"  [red]✗ {student_name}: {traceback.format_exc()}[/red]")
 
             progress.advance(task)
 

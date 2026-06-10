@@ -212,6 +212,37 @@ class GSClient:
             save_url = ""
         return         csrf_token, save_url, self._session.base_url if hasattr(self._session, 'base_url') else "https://www.gradescope.com"
 
+    def get_question_submissions_map(
+        self, course_id: str, question_id: str
+    ) -> dict[str, str]:
+        """Fetch the mapping of student names → question submission IDs.
+
+        Parses the per-question submissions table at
+        ``/courses/{cid}/questions/{qid}/submissions``.
+
+        Returns a dict like ``{"康子健": "3951769803", "姚鉴轩": "3951769804", ...}``
+        """
+        import re as _re3
+        from bs4 import BeautifulSoup
+
+        resp = self._session.get(
+            f"/courses/{course_id}/questions/{question_id}/submissions"
+        )
+        soup = BeautifulSoup(resp.text, "html.parser")
+        mapping: dict[str, str] = {}
+
+        # Look for grade links in the submissions table
+        for link in soup.find_all("a", href=_re3.compile(
+            rf"/courses/{course_id}/questions/{question_id}/submissions/\d+/grade"
+        )):
+            qsid = _re3.search(r"/submissions/(\d+)/grade", link["href"]).group(1)
+            # The link text is typically the student name
+            name = link.get_text(strip=True)
+            if name and qsid:
+                mapping[name] = qsid
+
+        return mapping
+
     def submit_grade(
         self,
         course_id: str,
