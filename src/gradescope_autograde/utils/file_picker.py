@@ -20,34 +20,23 @@ def _pick_macos(
     directory: bool = False,
 ) -> str | None:
     """macOS file picker via AppleScript."""
-    type_clause = ""
-    if file_types and not directory:
-        type_clause = (
-            'of type {"' + '","'.join(file_types) + '"}'
-        )
+    if directory:
+        script = f'choose folder with prompt "{title}"'
+    else:
+        script = f'choose file with prompt "{title}"'
+    
     cmd = [
         "osascript",
         "-e",
-        f"""
-        set theFile to choose file {type_clause}
-        with prompt "{title}"
-        set thePath to (POSIX path of theFile)
-        return thePath
-        """.strip(),
+        f'set theFile to {script}',
+        "-e",
+        "set thePath to POSIX path of theFile",
+        "-e",
+        "return thePath",
     ]
-    if directory:
-        cmd = [
-            "osascript",
-            "-e",
-            'set theFolder to choose folder with prompt "{}"'.format(title),
-            "-e",
-            "set thePath to POSIX path of theFolder",
-            "-e",
-            "return thePath",
-        ]
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=30
+            cmd, capture_output=True, text=True, timeout=60
         )
         if result.returncode == 0:
             path = result.stdout.strip()

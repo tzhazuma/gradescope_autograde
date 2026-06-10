@@ -1,0 +1,135 @@
+questions:
+- id: q1
+  max_points: 15
+  rubric:
+  - description: "Correctly translates the statement 'There is a person such that\
+      \ if he drinks, everyone drinks' into the formula \u2203x(Drinks(x) \u2192 \u2200\
+      y Drinks(y)). Acceptable variations include using a different predicate name\
+      \ (e.g., P(x)) as long as it represents 'drinks' and the logical structure is\
+      \ correct."
+    name: Correct Translation to First-Order Logic
+    points: 5
+  - description: "Correctly handles Case 1: If everyone drinks (\u2200y Drinks(y)),\
+      \ then for any person a, the implication Drinks(a) \u2192 \u2200y Drinks(y)\
+      \ is true because the consequent is true. Hence, the existential statement is\
+      \ true."
+    name: Valid Proof by Definition - Case 1
+    points: 5
+  - description: "Correctly handles Case 2: If not everyone drinks (\xAC\u2200y Drinks(y)),\
+      \ then there exists some person a such that \xACDrinks(a). For this a, the implication\
+      \ Drinks(a) \u2192 \u2200y Drinks(y) is true because the antecedent is false.\
+      \ Hence, the existential statement is true. Concludes that in both cases the\
+      \ formula is true, establishing its validity."
+    name: Valid Proof by Definition - Case 2
+    points: 5
+  title: 'Question 1: Translation and Natural Language Proof'
+  type: short_answer
+- id: q2
+  max_points: 15
+  rubric:
+  - description: "Starts with the negation \xAC\u2203x(Drinks(x) \u2192 \u2200y Drinks(y)).\
+      \ Correctly applies the duality rule to transform it into \u2200x\xAC(Drinks(x)\
+      \ \u2192 \u2200y Drinks(y))."
+    name: Correct Negation and Initial Setup
+    points: 3
+  - description: "Instantiates the universal quantifier with a constant (e.g., a1).\
+      \ Applies the rule for negated implication to decompose \xAC(Drinks(a1) \u2192\
+      \ \u2200y Drinks(y)) into Drinks(a1) and \xAC\u2200y Drinks(y)."
+    name: Proper Instantiation and Decomposition
+    points: 6
+  - description: "Correctly transforms \xAC\u2200y Drinks(y) into \u2203y\xACDrinks(y).\
+      \ Introduces a new constant (e.g., a2) for the existential quantifier, yielding\
+      \ \xACDrinks(a2). Instantiates the universal quantifier \u2200x with the new\
+      \ constant a2."
+    name: Handling Existential and Universal Quantifiers
+    points: 4
+  - description: "Derives a contradiction (e.g., Drinks(a2) and \xACDrinks(a2)) on\
+      \ the branch, closes the branch, and concludes that since all branches close,\
+      \ the negation is unsatisfiable, proving the original formula valid."
+    name: Closure of the Tableau
+    points: 2
+  title: 'Question 2: Semantic Tableau for Negation'
+  type: short_answer
+- id: q3
+  max_points: 20
+  rubric:
+  - description: "Starts with the goal sequent containing only the formula \u2203\
+      x(Drinks(x) \u2192 \u2200y Drinks(y)). Uses appropriate initial sequents (e.g.,\
+      \ D(a2), \xACD(a2))."
+    name: Correct Initial Sequents and Setup
+    points: 4
+  - description: "Correctly applies Gentzen rules (e.g., \u2203-right, \u2200-right,\
+      \ \u2192-right, contraction) to build the proof tree. Shows the step-by-step\
+      \ decomposition of the formula, introducing constants (e.g., a1, a2) as needed."
+    name: Application of Logical Rules
+    points: 10
+  - description: The proof tree is structurally valid, with all branches ending in
+      initial sequents or contradictions. The final sequent is derived from the given
+      formula using the rules correctly. The proof demonstrates that the formula is
+      a logical consequence of the empty set.
+    name: Proof Structure and Closure
+    points: 6
+  title: 'Question 3: Proof in Gentzen System'
+  type: short_answer
+- id: q4
+  max_points: 20
+  rubric:
+  - description: "Clearly sets up the proof by considering two cases: \u2200y Drinks(y)\
+      \ and \xAC\u2200y Drinks(y), mirroring the natural language proof. Uses the\
+      \ deduction theorem to derive implications from assumptions."
+    name: Correct Use of Deduction Theorem and Cases
+    points: 4
+  - description: "For Case 1 (assuming \u2200y Drinks(y)), correctly derives \u2203\
+      x(Drinks(x) \u2192 \u2200y Drinks(y)) using logical axioms and generalization."
+    name: Derivation of Case 1
+    points: 4
+  - description: "For Case 2 (assuming \xAC\u2200y Drinks(y)), correctly derives \u2203\
+      x(Drinks(x) \u2192 \u2200y Drinks(y)) using the given theorems (\u2200x(p(x)\u2192\
+      q(x)) \u2192 (\u2203xp(x)\u2192\u2203xq(x)) and (\xACA\u2192B)\u2192((A\u2192\
+      B)\u2192B)), double negation, and existential instantiation."
+    name: Derivation of Case 2
+    points: 8
+  - description: "Uses the second given theorem to combine the two cases and conclude\
+      \ \u2203x(Drinks(x) \u2192 \u2200y Drinks(y)) without assumptions. The proof\
+      \ is complete and valid."
+    name: Combination and Conclusion
+    points: 4
+  title: 'Question 4: Proof in Hilbert System'
+  type: short_answer
+- id: q5
+  max_points: 15
+  rubric:
+  - description: "Eliminates the implication: \xAC\u2203yp(y) \u2192 \u2203z(q(z)\u2192\
+      r(x)) becomes \u2203yp(y) \u2228 \u2203z(\xACq(z)\u2228r(x))."
+    name: Correct Implication Elimination and Quantifier Handling
+    points: 5
+  - description: "Correctly converts to prenex form: \u2200x\u2203y\u2203z(p(y) \u2228\
+      \ \xACq(z) \u2228 r(x)). Applies Skolemization: replaces existential variables\
+      \ y and z with Skolem functions f(x) and g(x) (or constants if domain is fixed),\
+      \ resulting in \u2200x(p(f(x)) \u2228 \xACq(g(x)) \u2228 r(x))."
+    name: Prenex Normal Form and Skolemization
+    points: 5
+  - description: "Writes the final clausal form as a set of clauses: {{p(f(x)), \xAC\
+      q(g(x)), r(x)}}. The clause is a disjunction of literals, and the universal\
+      \ quantifier is implicit."
+    name: Conversion to Clausal Form
+    points: 5
+  title: 'Question 5: Transformation to PCNF in Clausal Form'
+  type: short_answer
+- id: q6
+  max_points: 15
+  rubric:
+  - description: 'Starts by equating arguments: a = y, x = f(z), f(g(y)) = f(z).'
+    name: Correct Initial Unification Steps
+    points: 4
+  - description: 'Correctly simplifies: from f(g(y)) = f(z) deduces g(y) = z. Then
+      sets y = a, x = f(z), z = g(y).'
+    name: Step-by-Step Unification
+    points: 6
+  - description: "Substitutes y = a to get z = g(a), then x = f(g(a)). Presents the\
+      \ most general unifier (MGU): \xB5 = {x \u2190 f(g(a)), y \u2190 a, z \u2190\
+      \ g(a)}."
+    name: Final Substitution and Result
+    points: 5
+  title: 'Question 6: Unification of Atomic Formulas'
+  type: short_answer

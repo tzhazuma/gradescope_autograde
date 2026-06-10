@@ -1,5 +1,9 @@
 # Gradescope AutoGrade
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
+
 AI-powered automated grading assistant for Gradescope. Built for TAs who want to reduce grading workload without sacrificing quality.
 
 **Repository**: https://github.com/tzhazuma/gradescope_autograde
@@ -12,9 +16,11 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 - **Multiple LLM backends** — OpenCode Go (cloud), LM Studio (local/private)
 - **Handles all submission types** — LaTeX PDFs, scanned handwriting (OCR), and photo/image uploads
 - **PDF question parsing** — extract questions and reference answers from instructor PDFs
+- **Rubric generation** — generate rubrics from question/answer PDFs using AI
 - **Confidence-based review** — flags uncertain grades for human review
 - **Interactive TUI** — terminal UI with course/assignment selection, model picker, live progress
 - **Web GUI** — cross-platform browser interface with file upload and results export
+- **Question selector** — fetch and select specific questions from Gradescope
 - **LM Studio auto-management** — auto-detect, auto-start server, health checks
 - **CSV/JSON export** — Gradescope-compatible bulk upload format
 - **AI Chat Mode** — natural language assistant powered by OpenCode CLI
@@ -31,7 +37,39 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 8. [PDF Question Parsing](#pdf-question-parsing)
 9. [Workflow](#workflow)
 10. [Architecture](#architecture)
-11. [FAQ](#faq)
+11. [Changelog](#changelog)
+12. [FAQ](#faq)
+
+---
+
+## Changelog
+
+### v1.0.0 (2026-06-10)
+
+**Production Release** — All major features implemented and debugged.
+
+#### New Features
+- **Rubric Generation**: Generate rubrics from question/answer PDFs using AI
+  - TUI: Added Generate Rubric button with model selector and output path display
+  - GUI: Added Generate Rubric with answer PDF upload and model selection
+- **Question Selector**: Fetch and select specific questions from Gradescope
+  - TUI: Added dropdown selector that updates from GS questions or rubric
+  - GUI: Added question selector dropdown with dynamic updates
+- **AI Chat Mode**: Natural language assistant powered by OpenCode CLI
+  - Added `--verbose` flag for detailed output
+  - Fixed JSON streaming response handling
+
+#### Bug Fixes
+- Fixed macOS file picker (AppleScript syntax error)
+- Fixed GUI upload handling (SpooledTemporaryFile → bytes conversion)
+- Fixed ModelSelector widget ID conflict in TUI
+- Fixed chat response timeout handling
+- Improved error messages and user feedback
+
+#### Improvements
+- Increased chat timeout from 2 minutes to 2 minutes with proper timeout handling
+- Added version badge and changelog to README
+- Updated development status to Production/Stable
 
 ---
 

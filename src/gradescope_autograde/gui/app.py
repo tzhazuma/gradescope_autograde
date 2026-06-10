@@ -168,10 +168,15 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         "text-lg font-semibold mb-2"
                     )
 
+                    def _read_upload_content(content):
+                        if hasattr(content, 'read'):
+                            return content.read()
+                        return content
+
                     ui.label("Question PDF:")
                     ui.upload(
                         label="Question PDF",
-                        on_upload=lambda e: state.update(question_pdf=e.content),
+                        on_upload=lambda e: state.update(question_pdf=_read_upload_content(e.content)),
                     ).classes("w-full mb-4")
 
                     ui.label("Rubric File (.yaml / .yml / .pdf / .tex):")
@@ -180,14 +185,15 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                         from pathlib import Path
                         from gradescope_autograde.grader.rubric_parser import load_rubric
 
+                        content = _read_upload_content(e.content)
                         suffix = Path(e.name).suffix.lower()
                         if suffix in (".yaml", ".yml"):
                             import yaml
-                            state["rubric_yaml"] = e.content
-                            state["rubric_data"] = yaml.safe_load(e.content.decode("utf-8"))
+                            state["rubric_yaml"] = content
+                            state["rubric_data"] = yaml.safe_load(content.decode("utf-8"))
                         elif suffix in (".pdf", ".tex"):
                             tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-                            tmp.write(e.content)
+                            tmp.write(content)
                             tmp.close()
                             state["rubric_data"] = load_rubric(tmp.name)
                             Path(tmp.name).unlink(missing_ok=True)
@@ -203,7 +209,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                     ui.label("Answer PDF (optional, for rubric generation):")
                     ui.upload(
                         label="Answer PDF",
-                        on_upload=lambda e: state.update(answer_pdf=e.content),
+                        on_upload=lambda e: state.update(answer_pdf=_read_upload_content(e.content)),
                     ).classes("w-full mb-4")
 
                     ui.label("Rubric Generation Model:")

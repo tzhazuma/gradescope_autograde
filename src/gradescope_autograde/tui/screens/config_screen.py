@@ -227,7 +227,8 @@ class ConfigScreen(Screen):
 
         provider_name, model_id = model_info
 
-        status.update("[dim]Generating rubric... This may take a minute.[/]")
+        rubric_path = f"config/rubrics/generated_{self.assignment_id}.yaml"
+        status.update(f"[dim]Generating rubric using {provider_name}/{model_id}...[/]\n[dim]Output will be saved to: {rubric_path}[/]")
         try:
             from gradescope_autograde.grader.rubric_generator import generate_rubric
             from gradescope_autograde.config import load_config
@@ -244,7 +245,6 @@ class ConfigScreen(Screen):
                 provider_type=provider_name,
             )
 
-            rubric_path = f"config/rubrics/generated_{self.assignment_id}.yaml"
             Path(rubric_path).parent.mkdir(parents=True, exist_ok=True)
 
             import yaml
@@ -252,7 +252,7 @@ class ConfigScreen(Screen):
                 yaml.dump(rubric, f, default_flow_style=False)
 
             self.query_one("#rubric-path", Input).value = rubric_path
-            status.update(f"[green]Rubric generated and saved to: {rubric_path}[/]")
+            status.update(f"[green]✓ Rubric generated with {len(rubric.get('questions', []))} questions[/]\n[green]✓ Saved to: {rubric_path}[/]")
 
             from gradescope_autograde.grader.rubric_parser import parse_questions
             questions = parse_questions(rubric)

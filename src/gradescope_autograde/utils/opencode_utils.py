@@ -168,7 +168,7 @@ def run_chat(message: str, working_dir: str | None = None, model: str = "opencod
     if not opencode:
         return "OpenCode is not installed. Run `brew install opencode` or visit https://opencode.ai"
 
-    cmd = [opencode, "run", "-m", model, "--format", "json"] + message.strip().split()
+    cmd = [opencode, "run", "-m", model, "--format", "json", "--", message.strip()]
     try:
         import json as _json
         
@@ -183,8 +183,15 @@ def run_chat(message: str, working_dir: str | None = None, model: str = "opencod
         
         response_parts = []
         full_output = []
+        import time
+        start_time = time.time()
+        timeout = 120  # 2 minutes timeout
         
         for line in process.stdout:
+            if time.time() - start_time > timeout:
+                process.kill()
+                return "OpenCode command timed out after 2 minutes."
+            
             line = line.strip()
             if not line:
                 continue
@@ -207,7 +214,7 @@ def run_chat(message: str, working_dir: str | None = None, model: str = "opencod
                     content = event.get("part", {}).get("content", "")
                     if content:
                         response_parts.append(content)
-                elif event_type == "step_end":
+                elif event_type in ("step_end", "step_finish"):
                     break
             except _json.JSONDecodeError:
                 continue
