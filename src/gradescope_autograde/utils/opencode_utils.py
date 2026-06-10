@@ -167,7 +167,7 @@ def run_chat(message: str, working_dir: str | None = None, model: str = "opencod
     if not opencode:
         return "OpenCode is not installed. Run `brew install opencode` or visit https://opencode.ai"
 
-    cmd = [opencode, "run", "-m", model, message]
+    cmd = [opencode, "run", "-m", model] + message.strip().split()
     try:
         r = subprocess.run(
             cmd,

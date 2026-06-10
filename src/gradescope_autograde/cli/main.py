@@ -762,7 +762,8 @@ def chat(message: str | None, model: str, provider: str) -> None:
         if msg.lower() in ("exit", "quit", "q"):
             console.print("[dim]Goodbye![/dim]")
             break
-        output = run_chat(msg, model=full_model)
+        with console.status("[bold yellow]Thinking...[/bold yellow]"):
+            output = run_chat(msg, model=full_model)
         console.print(output)
 
 
