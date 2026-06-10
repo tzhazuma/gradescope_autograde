@@ -1,6 +1,6 @@
 # Gradescope AutoGrade
 
-[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
@@ -43,6 +43,16 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 ---
 
 ## Changelog
+
+### v1.0.4 (2026-06-10)
+
+**Multimodal Grading Fix**
+
+#### Fixes
+- Fixed multimodal grading path to show score output after LLM call
+- Added mimo-v2.5-pro to multimodal model detection in auto mode
+- Added detailed error logging for multimodal LLM failures
+- Added response length logging for debugging
 
 ### v1.0.3 (2026-06-10)
 

@@ -147,7 +147,7 @@ class GradingScreen(Screen):
 
                     # --- MULTIMODAL PATH ---
                     use_mm = self._extraction == "multimodal" or (
-                        self._extraction == "auto" and self.model_id in ("mimo-v2.5",)
+                        self._extraction == "auto" and self.model_id in ("mimo-v2.5", "mimo-v2.5-pro")
                     )
                     if use_mm:
                         import io
@@ -171,28 +171,45 @@ class GradingScreen(Screen):
                                 log_msg(f"  Calling multimodal LLM for {qid}...")
                                 extra = question.get("extra_instructions", "")
                                 prompt = self._build_mm_prompt(question, extra)
-                                raw = provider.complete_multimodal(
-                                    prompt=prompt,
-                                    images=mm_images,
-                                    response_format="json",
-                                )
-                                import json as _json
                                 try:
-                                    parsed = _json.loads(raw) if isinstance(raw, str) else raw
-                                except Exception:
-                                    parsed = {"score": 0, "confidence": 0, "feedback": f"Parse error", "flags": ["needs_review"]}
-                                result = {
-                                    "question_id": qid,
-                                    "score": float(parsed.get("score", 0)),
-                                    "confidence": float(parsed.get("confidence", 0)),
-                                    "feedback": parsed.get("feedback", ""),
-                                    "flags": parsed.get("flags", []),
-                                    "student_name": student,
-                                    "submission_id": sub_id,
-                                }
-                                log_msg(f"  → {qid}: {result['score']}/{question.get('max_points', '?')} (conf={result['confidence']:.0%})")
-                                review_queue.check(sub_id, result)
-                                results_list.append(result)
+                                    raw = provider.complete_multimodal(
+                                        prompt=prompt,
+                                        images=mm_images,
+                                        response_format="json",
+                                    )
+                                    log_msg(f"  Got response ({len(raw)} chars)")
+                                except Exception as mm_err:
+                                    log_msg(f"  [error]Multimodal LLM error: {mm_err}[/]")
+                                    raw = None
+
+                                if raw:
+                                    import json as _json
+                                    try:
+                                        parsed = _json.loads(raw) if isinstance(raw, str) else raw
+                                    except Exception:
+                                        parsed = {"score": 0, "confidence": 0, "feedback": f"Parse error: {raw[:200]}", "flags": ["needs_review"]}
+                                    result = {
+                                        "question_id": qid,
+                                        "score": float(parsed.get("score", 0)),
+                                        "confidence": float(parsed.get("confidence", 0)),
+                                        "feedback": parsed.get("feedback", ""),
+                                        "flags": parsed.get("flags", []),
+                                        "student_name": student,
+                                        "submission_id": sub_id,
+                                    }
+                                    log_msg(f"  → {qid}: {result['score']}/{question.get('max_points', '?')} (conf={result['confidence']:.0%})")
+                                    review_queue.check(sub_id, result)
+                                    results_list.append(result)
+                                else:
+                                    results_list.append({
+                                        "submission_id": sub_id,
+                                        "student_name": student,
+                                        "question_id": qid,
+                                        "score": 0,
+                                        "confidence": 0,
+                                        "feedback": "Multimodal LLM call failed",
+                                        "flags": ["needs_review", "pipeline_error"],
+                                    })
                             update_progress(i + 1, total)
                             continue
                         except Exception as e:
