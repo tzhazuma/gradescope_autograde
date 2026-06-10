@@ -119,12 +119,13 @@ def merge_provider_to_config(provider_json_str: str) -> bool:
         return False
 
 
-def run_chat(message: str, working_dir: str | None = None) -> str:
+def run_chat(message: str, working_dir: str | None = None, model: str = "opencode-go/mimo-v2.5") -> str:
     """Run ``opencode run <message>`` and return the output.
 
     Args:
         message: Natural-language command to send to opencode.
         working_dir: Optional working directory for the session.
+        model: Model identifier in ``provider/model`` format.
 
     Returns:
         Stdout + stderr from the run command.
@@ -133,7 +134,7 @@ def run_chat(message: str, working_dir: str | None = None) -> str:
     if not opencode:
         return "OpenCode is not installed. Run `brew install opencode` or visit https://opencode.ai"
 
-    cmd = [opencode, "run", message]
+    cmd = [opencode, "run", "-m", model, message]
     try:
         r = subprocess.run(
             cmd,
