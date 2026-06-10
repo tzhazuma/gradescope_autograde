@@ -149,15 +149,23 @@ class GSClient:
         course_id: str,
         assignment_id: str,
         submission_id: str,
+        gs_question_id: str | None = None,
+        student_name: str = "",
     ) -> bytes:
-        """GET the submission PDF as raw bytes.
+        """GET the submission PDF/Image content as raw bytes.
 
-        Gradescope stores submissions as PDF attachments on S3. The
-        ``/pdf`` endpoint may 4xx, so we fetch the submission JSON and
-        extract the S3 presigned URL from ``pdf_attachment.url``.
+        Handles three content types in order:
+        1. PDF attachments (``pdf_attachment.url``)
+        2. Image uploads (via question-specific grading page)
+        3. Plain text
+        4. ``/pdf`` endpoint fallback
+
+        Args:
+            gs_question_id: Numeric question ID for image-based submissions.
+            student_name: Student name for QS ID lookup.
         """
         self._limiter.wait()
-        # Fetch submission JSON to get the S3 presigned URL
+        # Fetch submission JSON
         resp = self._session.get(
             f"/courses/{course_id}/assignments/{assignment_id}"
             f"/submissions/{submission_id}"
@@ -165,28 +173,84 @@ class GSClient:
         data = resp.json()
         pdf_attachment = data.get("pdf_attachment")
         pdf_url = pdf_attachment.get("url", "") if isinstance(pdf_attachment, dict) else ""
-        if not pdf_url:
-            # Try extracting text from submission JSON
-            text = data.get("text", "") or data.get("content", "") or ""
-            if text:
-                return text.encode("utf-8")
-            # Fallback: try /pdf endpoint
-            try:
-                self._limiter.wait()
-                resp2 = self._session.get(
-                    f"/courses/{course_id}/assignments/{assignment_id}"
-                    f"/submissions/{submission_id}/pdf"
-                )
-                return resp2.content
-            except Exception:
-                # No retrievable content for this submission
-                return b"[No retrievable content for this submission]"
+        if pdf_url:
+            import requests as _requests
+            pdf_resp = _requests.get(pdf_url, timeout=60)
+            pdf_resp.raise_for_status()
+            return pdf_resp.content
 
-        # Download PDF directly from S3 presigned URL
-        import requests as _requests
-        pdf_resp = _requests.get(pdf_url, timeout=60)
-        pdf_resp.raise_for_status()
-        return pdf_resp.content
+        # No PDF — try image attachments via question page
+        if gs_question_id:
+            try:
+                # Get the QS ID for this student
+                qs_map = self.get_question_submissions_map(course_id, gs_question_id)
+                qs_id = ""
+                for full_name, qsid in qs_map.items():
+                    if full_name.startswith(student_name):
+                        qs_id = qsid
+                        break
+                if qs_id:
+                    import json, io
+                    from bs4 import BeautifulSoup
+                    import pymupdf
+                    from PIL import Image
+
+                    qresp = self._session.get(
+                        f"/courses/{course_id}/questions/{gs_question_id}/submissions/{qs_id}/grade"
+                    )
+                    soup = BeautifulSoup(qresp.text, "html.parser")
+                    grader = soup.find(attrs={"data-react-class": "SubmissionGrader"})
+                    if grader:
+                        raw = grader.get("data-react-props", "").replace("&quot;", '"')
+                        props = json.loads(raw)
+                        pages = props.get("pages", [])
+                        if pages:
+                            # Download images and combine into a PDF
+                            import requests as _req
+                            doc = pymupdf.open()
+                            for p in pages:
+                                img_url = p.get("url", "")
+                                if not img_url:
+                                    continue
+                                try:
+                                    img_resp = _req.get(img_url, timeout=30)
+                                    img_resp.raise_for_status()
+                                    img_bytes = img_resp.content
+                                    img_pil = Image.open(io.BytesIO(img_bytes))
+                                    # Convert PIL Image to RGB if needed
+                                    if img_pil.mode != "RGB":
+                                        img_pil = img_pil.convert("RGB")
+                                    img_bytes_rgb = io.BytesIO()
+                                    img_pil.save(img_bytes_rgb, format="PNG")
+                                    # Add as PDF page
+                                    page = doc.new_page(width=img_pil.width, height=img_pil.height)
+                                    page.insert_image(
+                                        page.rect, stream=img_bytes_rgb.getvalue()
+                                    )
+                                except Exception:
+                                    continue
+                            pdf_bytes = doc.tobytes()
+                            doc.close()
+                            if len(pdf_bytes) > 100:
+                                return pdf_bytes
+            except Exception:
+                pass
+
+        # Try plain text
+        text = data.get("text", "") or data.get("content", "") or ""
+        if text:
+            return text.encode("utf-8")
+
+        # Fallback: /pdf endpoint
+        try:
+            self._limiter.wait()
+            resp2 = self._session.get(
+                f"/courses/{course_id}/assignments/{assignment_id}"
+                f"/submissions/{submission_id}/pdf"
+            )
+            return resp2.content
+        except Exception:
+            return b"[No retrievable content for this submission]"
 
     def _get_csrf_and_save_url(
         self, course_id: str, question_id: str, submission_id: str

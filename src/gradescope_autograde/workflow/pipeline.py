@@ -103,7 +103,9 @@ class Pipeline:
                 # Fetch submission content
                 log(f"[{i+1}/{len(submissions)}] Fetching PDF for {student_name}", verbose)
                 content = self.client.get_submission_content(
-                    course_id, assignment_id, sub_id
+                    course_id, assignment_id, sub_id,
+                    gs_question_id=gs_question_id,
+                    student_name=student_name,
                 )
                 log(f"  PDF: {len(content)} bytes", verbose)
 

@@ -119,7 +119,9 @@ class GradingScreen(Screen):
 
                 try:
                     content = client.get_submission_content(
-                        self.course_id, self.assignment_id, sub_id
+                        self.course_id, self.assignment_id, sub_id,
+                        gs_question_id="71029768",  # will make configurable later
+                        student_name=student,
                     )
                     if len(content) < 100:
                         log_msg(f"  [error] PDF too small: {len(content)} bytes, skipping[/]")
