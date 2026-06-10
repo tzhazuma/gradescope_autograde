@@ -190,10 +190,10 @@ class GSClient:
 
     def _get_csrf_and_save_url(
         self, course_id: str, question_id: str, submission_id: str
-    ) -> tuple[str, str, str]:
+    ) -> tuple[str, str, str, str, float]:
         """Fetch grading context to extract CSRF token and save_grade URL.
 
-        Returns ``(csrf_token, save_url, base_url)``.
+        Returns ``(csrf_token, save_url, base_url, scoring_type, max_points)``.
         Raises ``ValueError`` if the page is inaccessible.
         """
         import json
@@ -204,13 +204,22 @@ class GSClient:
         soup = BeautifulSoup(resp.text, "html.parser")
         csrf_meta = soup.find("meta", {"name": "csrf-token"})
         csrf_token = csrf_meta.get("content", "") if csrf_meta else ""
+        save_url, scoring_type, max_points = "", "negative", 0.0
         grader = soup.find(attrs={"data-react-class": "SubmissionGrader"})
         if grader:
             props = json.loads(grader.get("data-react-props", "{}"))
             save_url = props.get("urls", {}).get("save_grade", "")
-        else:
-            save_url = ""
-        return         csrf_token, save_url, self._session.base_url if hasattr(self._session, 'base_url') else "https://www.gradescope.com"
+            scoring_type = (
+                props.get("assignment", {})
+                .get("settings", {})
+                .get("question_settings", {})
+                .get("scoring_type", "negative")
+            )
+            max_points = float(
+                props.get("question", {}).get("weight", 0) or 0
+            )
+        base = self._session.base_url if hasattr(self._session, 'base_url') else "https://www.gradescope.com"
+        return csrf_token, save_url, base, scoring_type, max_points
 
     def get_question_submissions_map(
         self, course_id: str, question_id: str
@@ -257,12 +266,15 @@ class GSClient:
         Uses the Gradescope React grading endpoint:
         ``/courses/{cid}/questions/{qid}/submissions/{qsid}/grade``
         with CSRF token extracted from the page.
+
+        Automatically detects scoring type (positive/negative) and adjusts
+        the point value accordingly.
         """
         import json
 
         self._limiter.wait()
         try:
-            csrf, save_url, base_url = self._get_csrf_and_save_url(
+            csrf, save_url, base_url, scoring_type, max_pts = self._get_csrf_and_save_url(
                 course_id, question_id, submission_id
             )
         except Exception:
@@ -282,9 +294,19 @@ class GSClient:
         if not save_url or not csrf:
             return False
 
+        # In negative scoring mode, points are treated as adjustment (deduction).
+        # Convert the desired score to the appropriate point value.
+        #   negative: score = max_pts - deductions + adjustment
+        #   positive: score = rubric_total + adjustment
+        # With no rubric items applied, we send the score directly.
+        if scoring_type == "negative" and max_pts > 0:
+            points_to_send = score - max_pts  # e.g. 15 - 20 = -5 adjustment
+        else:
+            points_to_send = score
+
         payload = {
             "question_submission_evaluation": {
-                "points": score,
+                "points": points_to_send,
                 "comments": feedback or "",
             }
         }
