@@ -208,6 +208,13 @@ class ConfigScreen(Screen):
         q_ids_raw = self.query_one("#question-ids", Input).value.strip()
         question_ids = [x.strip() for x in q_ids_raw.split(",") if x.strip()] if q_ids_raw else None
 
+        gs_question_id = None
+        if question_ids and self._fetched_questions:
+            for q in self._fetched_questions:
+                if q.get("id") in question_ids or q.get("name") in question_ids:
+                    gs_question_id = q.get("id")
+                    break
+
         from gradescope_autograde.tui.screens.grading_screen import GradingScreen
         self.app.push_screen(GradingScreen(
             course_id=self.course_id,
@@ -219,6 +226,7 @@ class ConfigScreen(Screen):
             provider_name=provider_name,
             model_id=model_id,
             question_ids=question_ids,
+            gs_question_id=gs_question_id,
             verbose=getattr(self, "_verbose", False),
             upload=getattr(self, "_upload", False),
             with_pages=getattr(self, "_with_pages", False),

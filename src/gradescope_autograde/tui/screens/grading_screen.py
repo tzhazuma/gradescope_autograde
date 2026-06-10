@@ -28,6 +28,7 @@ class GradingScreen(Screen):
         provider_name: str,
         model_id: str,
         question_ids: list[str] | None = None,
+        gs_question_id: str | None = None,
         verbose: bool = False,
         upload: bool = False,
         with_pages: bool = False,
@@ -43,6 +44,7 @@ class GradingScreen(Screen):
         self.provider_name = provider_name
         self.model_id = model_id
         self._question_ids = question_ids
+        self._gs_question_id = gs_question_id
         self._verbose = verbose
         self._upload = upload
         self._with_pages = with_pages
@@ -120,7 +122,7 @@ class GradingScreen(Screen):
                 try:
                     content = client.get_submission_content(
                         self.course_id, self.assignment_id, sub_id,
-                        gs_question_id="71029768",  # will make configurable later
+                        gs_question_id=self._gs_question_id,
                         student_name=student,
                     )
                     if len(content) < 100:
