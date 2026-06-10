@@ -104,10 +104,10 @@ class AssignmentSelectScreen(Screen):
                 assignment_title = a.get("name") or a.get("title", "")
                 break
 
-        from gradescope_autograde.tui.screens.config_screen import ConfigScreen
+        from gradescope_autograde.tui.screens.rubric_screen import RubricScreen
 
         self.app.push_screen(
-            ConfigScreen(
+            RubricScreen(
                 course_id=self.course_id,
                 course_name=self.course_name,
                 assignment_id=assignment_id,

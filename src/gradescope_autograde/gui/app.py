@@ -236,6 +236,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                             return
                         ui.notify("Generating rubric... This may take a minute.", type="info")
                         try:
+                            import asyncio
                             import tempfile
                             from pathlib import Path
                             from gradescope_autograde.grader.rubric_generator import generate_rubric
@@ -254,13 +255,17 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                                     tmp.write(state["answer_pdf"])
                                     a_pdf_path = tmp.name
 
-                            rubric = generate_rubric(
-                                question_pdf=q_pdf_path,
-                                answer_pdf=a_pdf_path,
-                                model=state.get("rubric_gen_model", "deepseek-v4-pro"),
-                                api_key=api_key,
-                                provider_type="opencode-go",
-                            )
+                            def _run_generate():
+                                return generate_rubric(
+                                    question_pdf=q_pdf_path,
+                                    answer_pdf=a_pdf_path,
+                                    model=state.get("rubric_gen_model", "deepseek-v4-pro"),
+                                    api_key=api_key,
+                                    provider_type="opencode-go",
+                                )
+
+                            loop = asyncio.get_event_loop()
+                            rubric = await loop.run_in_executor(None, _run_generate)
 
                             Path(q_pdf_path).unlink(missing_ok=True)
                             if a_pdf_path:

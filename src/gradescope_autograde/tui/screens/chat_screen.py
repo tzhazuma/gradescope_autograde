@@ -8,13 +8,14 @@ from textual.widgets import Button, Footer, Header, Input, Label, Static
 
 
 class ChatScreen(Screen):
+    AUTO_FOCUS = "#chat-input"
+
     def __init__(self, verbose: bool = False) -> None:
         super().__init__()
         self.verbose = verbose
         self._chat_history: list[str] = []
 
     BINDINGS = [
-        ("q", "quit", "Quit"),
         ("escape", "go_back", "Back"),
     ]
 
@@ -52,11 +53,11 @@ class ChatScreen(Screen):
             status.update("[dim]Verbose mode OFF[/]")
 
     @on(Button.Pressed, "#send-chat")
-    def _on_send_button(self) -> None:
+    def _on_send_button(self, event: Button.Pressed) -> None:
         self._send_message()
 
     @on(Input.Submitted, "#chat-input")
-    def _on_input_submitted(self) -> None:
+    def _on_input_submitted(self, event: Input.Submitted) -> None:
         self._send_message()
 
     @work(thread=True)

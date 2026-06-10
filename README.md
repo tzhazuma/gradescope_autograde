@@ -1,6 +1,6 @@
 # Gradescope AutoGrade
 
-[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
@@ -43,6 +43,23 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 ---
 
 ## Changelog
+
+### v1.0.2 (2026-06-10)
+
+**UI Improvements & Bug Fixes**
+
+#### Improvements
+- **TUI 2-Page Layout**: Split configuration into Step 1 (Rubric Setup) and Step 2 (Grading Config) for better usability
+  - Step 1: Question PDF, rubric file, rubric generation
+  - Step 2: Model selection, question selection, grading options
+- **GUI Async Rubric Generation**: Run rubric generation in thread to prevent connection timeout
+- **Chat Auto-Focus**: Chat input now auto-focuses on screen mount
+- Removed 'q' binding from chat screen to allow typing 'q' in messages
+
+#### Bug Fixes
+- Fixed GUI "connection lost" error during rubric generation
+- Fixed chat Enter key not working (removed conflicting 'q' binding)
+- Added mimo-v2.5-pro model to GUI model selectors
 
 ### v1.0.1 (2026-06-10)
 
