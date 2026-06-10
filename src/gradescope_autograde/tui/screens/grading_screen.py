@@ -125,27 +125,28 @@ class GradingScreen(Screen):
                         gs_question_id=self._gs_question_id,
                         student_name=student,
                     )
-                    if len(content) < 100:
-                        log_msg(f"  [error] PDF too small: {len(content)} bytes, skipping[/]")
+                    if len(content) < 10:
+                        log_msg(f"  [error] Submission empty or unreachable: {len(content)} bytes, skipping[/]")
                         results_list.append({
                             "submission_id": sub_id,
                             "student_name": student,
                             "question_id": "error",
                             "score": 0,
                             "confidence": 0,
-                            "feedback": f"PDF content unreachable ({len(content)} bytes)",
+                            "feedback": f"Submission empty or unreachable ({len(content)} bytes)",
                             "flags": ["needs_review", "content_error"],
                         })
                         update_progress(i + 1, total)
                         continue
 
-                    log_msg(f"  PDF: {len(content)} bytes, mode={self._extraction}")
+                    log_msg(f"  Content: {len(content)} bytes, mode={self._extraction}")
 
                     all_qs = self.rubric_data.get("questions", [])
-                    questions = (
-                        [q for q in all_qs if q.get("id") in self._question_ids]
-                        if self._question_ids else all_qs
-                    )
+                    if self._question_ids:
+                        rubric_qs = [q for q in all_qs if q.get("id") in self._question_ids]
+                        questions = rubric_qs if rubric_qs else all_qs
+                    else:
+                        questions = all_qs
 
                     # --- MULTIMODAL PATH ---
                     use_mm = self._extraction == "multimodal" or (
@@ -157,15 +158,38 @@ class GradingScreen(Screen):
                         from PIL import Image
 
                         try:
-                            doc_mm = pymupdf.open(stream=content, filetype="pdf")
                             mm_images = []
-                            for page in doc_mm:
-                                pix = page.get_pixmap(dpi=150)
-                                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                                buf = io.BytesIO()
-                                img.save(buf, format="PNG")
-                                mm_images.append(buf.getvalue())
-                            doc_mm.close()
+                            is_pdf = content[:4] == b'%PDF'
+                            if is_pdf:
+                                doc_mm = pymupdf.open(stream=content, filetype="pdf")
+                                for page in doc_mm:
+                                    pix = page.get_pixmap(dpi=150)
+                                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                                    buf = io.BytesIO()
+                                    img.save(buf, format="PNG")
+                                    mm_images.append(buf.getvalue())
+                                doc_mm.close()
+                            else:
+                                try:
+                                    img = Image.open(io.BytesIO(content))
+                                    if img.mode != "RGB":
+                                        img = img.convert("RGB")
+                                    buf = io.BytesIO()
+                                    img.save(buf, format="PNG")
+                                    mm_images.append(buf.getvalue())
+                                except Exception:
+                                    log_msg(f"  [warn] Content is not valid PDF or image, skipping[/]")
+                                    results_list.append({
+                                        "submission_id": sub_id,
+                                        "student_name": student,
+                                        "question_id": "error",
+                                        "score": 0,
+                                        "confidence": 0,
+                                        "feedback": "Content is not valid PDF or image",
+                                        "flags": ["needs_review", "content_error"],
+                                    })
+                                    update_progress(i + 1, total)
+                                    continue
                             log_msg(f"  Rendered {len(mm_images)} page image(s) for multimodal LLM")
 
                             for question in questions:

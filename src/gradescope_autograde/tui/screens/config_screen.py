@@ -213,7 +213,17 @@ class ConfigScreen(Screen):
             gs_ids = [qid for qid in question_ids if qid.isdigit()]
             if gs_ids:
                 gs_question_id = gs_ids[0]
-                question_ids = None
+                for q in self._fetched_questions:
+                    if q.get("id") == gs_question_id:
+                        q_name = q.get("name", "")
+                        rubric_id = "q" + q_name[1:] if q_name.startswith("Q") and q_name[1:].isdigit() else None
+                        if rubric_id:
+                            question_ids = [rubric_id]
+                        else:
+                            question_ids = None
+                        break
+                else:
+                    question_ids = None
             elif self._fetched_questions:
                 for q in self._fetched_questions:
                     if q.get("name") in question_ids:

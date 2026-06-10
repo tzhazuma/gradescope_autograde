@@ -1,6 +1,6 @@
 # Gradescope AutoGrade
 
-[![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
@@ -43,6 +43,17 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 ---
 
 ## Changelog
+
+### v1.0.7 (2026-06-10)
+
+**Submission Handling & Question Filtering Fixes**
+
+#### Fixes
+- Lowered empty submission threshold from 100 bytes to 10 bytes
+- Added image submission detection and handling (non-PDF content)
+- Fixed GS ID to rubric ID mapping (e.g., 71875707 → q4)
+- When GS ID is entered, now correctly filters to only that question
+- Improved error messages for empty/invalid submissions
 
 ### v1.0.6 (2026-06-10)
 
