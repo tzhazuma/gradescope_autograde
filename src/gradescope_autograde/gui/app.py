@@ -483,6 +483,19 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
 
                             q_ids_raw = question_ids_input.value.strip()
                             q_ids = [x.strip() for x in q_ids_raw.split(",") if x.strip()] if q_ids_raw else None
+                            
+                            gs_question_id = None
+                            if q_ids:
+                                gs_ids = [qid for qid in q_ids if qid.isdigit()]
+                                if gs_ids:
+                                    gs_question_id = gs_ids[0]
+                                    q_ids = None
+                                elif state.get("gs_questions"):
+                                    for q in state["gs_questions"]:
+                                        if q.get("name") in q_ids:
+                                            gs_question_id = q.get("id")
+                                            break
+                            
                             # Run pipeline in thread to avoid blocking NiceGUI event loop
                             def _run():
                                 return pipeline_obj.run(
@@ -491,6 +504,7 @@ def run_gui(host: str = "127.0.0.1", port: int = 8080, config_path: str = "confi
                                     rubric,
                                     dry_run=not state.get("upload", False),
                                     question_ids=q_ids,
+                                    gs_question_id=gs_question_id,
                                     verbose=state.get("verbose", False),
                                     upload=state.get("upload", False) or None,
                                     with_pages=state.get("with_pages", False),

@@ -1,6 +1,6 @@
 # Gradescope AutoGrade
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/tzhazuma/gradescope_autograde)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
 
@@ -44,6 +44,15 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 ---
 
 ## Changelog
+
+### v1.1.1 (2026-06-10)
+
+**GUI Fix - Image Submission Support**
+
+#### Fixes
+- Added `gs_question_id` parameter to GUI grading pipeline
+- GUI now properly handles image-based submissions
+- Added GS question ID mapping logic to GUI (same as TUI)
 
 ### v1.1.0 (2026-06-10)
 
