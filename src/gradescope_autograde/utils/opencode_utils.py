@@ -168,44 +168,61 @@ def run_chat(message: str, working_dir: str | None = None, model: str = "opencod
     if not opencode:
         return "OpenCode is not installed. Run `brew install opencode` or visit https://opencode.ai"
 
-    cmd = [opencode, "run", "-m", model] + message.strip().split()
+    cmd = [opencode, "run", "-m", model, "--format", "json"] + message.strip().split()
     try:
-        if verbose:
-            import sys
-            result_parts = []
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                cwd=working_dir,
-                bufsize=1,
-            )
+        import json as _json
+        
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=working_dir,
+            bufsize=1,
+        )
+        
+        response_parts = []
+        full_output = []
+        
+        for line in process.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            full_output.append(line)
             
-            for line in process.stdout:
-                sys.stdout.write(line)
+            if verbose:
+                import sys
+                sys.stdout.write(line + "\n")
                 sys.stdout.flush()
-                result_parts.append(line)
             
-            process.wait(timeout=600)
-            
-            stderr_output = process.stderr.read()
-            if stderr_output and verbose:
-                sys.stderr.write(stderr_output)
-                sys.stderr.flush()
-                result_parts.append("\n" + stderr_output)
-            
-            return "".join(result_parts)
-        else:
-            r = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=600,
-                cwd=working_dir,
-            )
-            return r.stdout + ("\n" + r.stderr if r.stderr else "")
+            try:
+                event = _json.loads(line)
+                event_type = event.get("type", "")
+                
+                if event_type == "text":
+                    text = event.get("part", {}).get("text", "")
+                    if text:
+                        response_parts.append(text)
+                elif event_type == "assistant":
+                    content = event.get("part", {}).get("content", "")
+                    if content:
+                        response_parts.append(content)
+                elif event_type == "step_end":
+                    break
+            except _json.JSONDecodeError:
+                continue
+        
+        process.wait(timeout=30)
+        
+        if response_parts:
+            return "".join(response_parts)
+        
+        if verbose:
+            return "\n".join(full_output)
+        
+        return process.stdout.read() if process.stdout else ""
     except subprocess.TimeoutExpired:
-        return "OpenCode command timed out after 600 seconds (10 minutes)."
+        process.kill()
+        return "OpenCode command timed out."
     except Exception as e:
         return f"Error running opencode: {e}"
