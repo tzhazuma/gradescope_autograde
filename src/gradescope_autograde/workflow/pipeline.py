@@ -219,9 +219,6 @@ class Pipeline:
                             skip_count += 1
                             log(f"  Skipping {r.get('student_name','?')}/{r.get('question_id','?')} — has errors", verbose)
                             continue
-                        if r.get("score", 0) <= 0:
-                            skip_count += 1
-                            log(f"  Skipping {r.get('student_name','?')} — score=0 (likely no content)", verbose)
                         rid = r.get("question_id", "")
                         gsid = gs_qid_map.get(rid, rid)
                         sname = r.get("student_name", "")

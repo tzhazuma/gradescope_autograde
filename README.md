@@ -10,6 +10,7 @@ AI-powered automated grading assistant for Gradescope. Built for TAs who want to
 
 - **AI-powered grading** — evaluate student answers against YAML rubrics using LLMs
 - **Multiple LLM backends** — OpenCode Go (cloud), LM Studio (local/private)
+- **Handles all submission types** — LaTeX PDFs, scanned handwriting (OCR), and photo/image uploads
 - **PDF question parsing** — extract questions and reference answers from instructor PDFs
 - **Confidence-based review** — flags uncertain grades for human review
 - **Interactive TUI** — terminal UI with course/assignment selection, model picker, live progress
@@ -329,7 +330,7 @@ gs-autograde grade COURSE_ID ASSIGN_ID -r answer.pdf --gen-rubric --rubric-gen-m
 gs-autograde grade COURSE_ID ASSIGN_ID -r rubric.yaml --upload --verbose
 ```
 
-> ⚠️ **Upload safety**: Grades with `error`, `extraction_error`, or `pipeline_error` flags are **automatically skipped** during upload to prevent overwriting existing grades with incorrect values.
+> ⚠️ **Upload safety**: Only submissions with error flags (`pipeline_error`, `extraction_error`) are skipped. Submissions with valid content but score=0 are uploaded normally.
 
 ### `review` — Review Flagged Grades
 
